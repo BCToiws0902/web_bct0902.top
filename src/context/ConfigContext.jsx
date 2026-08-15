@@ -149,6 +149,9 @@ export const ConfigProvider = ({ children }) => {
     const updateDynamicStyles = (appearance) => {
         if (!appearance) return;
         const root = document.documentElement;
+        if (appearance.primaryColor) root.style.setProperty('--accent-main', appearance.primaryColor);
+        if (appearance.accentColor) root.style.setProperty('--accent-secondary', appearance.accentColor);
+        if (appearance.pixelGlow) root.style.setProperty('--accent-glow', appearance.pixelGlow);
         if (appearance.utilityBackground) {
             root.style.setProperty('--utility-bg', `url('${appearance.utilityBackground}')`);
         } else {

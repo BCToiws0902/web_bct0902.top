@@ -11,10 +11,10 @@
   --text-secondary: #94a3b8;
   --text-muted: #475569;
 
-  --accent-main: #00f0ff; 
-  --accent-secondary: #b026ff; 
+  --accent-main: #ff9a3d; 
+  --accent-secondary: #ffb000; 
   --accent-gold: #ffb000; 
-  --accent-glow: rgba(0, 240, 255, 0.5);
+  --accent-glow: rgba(255, 154, 61, 0.5);
   
   --success: #10b981;
   --danger: #ef4444;
