@@ -1,19 +1,29 @@
-import { useEffect } from 'react';
-import { useConfig } from '../context/ConfigContext';
+import { useState, useEffect } from 'react';
 
 export function useTheme() {
-  const { config } = useConfig();
-  const theme = config?.appearance?.theme || 'dark';
+  const [theme, setThemeState] = useState(() => {
+    const savedTheme = localStorage.getItem('bct_theme');
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      return savedTheme;
+    }
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  });
 
   useEffect(() => {
     const root = window.document.documentElement;
-    if (theme === 'dark') {
-      root.setAttribute('data-theme', 'dark');
-    } else {
-      root.setAttribute('data-theme', 'light');
-    }
+    root.setAttribute('data-theme', theme);
+    localStorage.setItem('bct_theme', theme);
   }, [theme]);
 
-  return { theme };
-}
+  const toggleTheme = () => {
+    setThemeState((prevTheme) => (prevTheme === 'dark' ? 'light' : 'dark'));
+  };
 
+  const setTheme = (newTheme) => {
+    if (newTheme === 'dark' || newTheme === 'light') {
+      setThemeState(newTheme);
+    }
+  };
+
+  return { theme, toggleTheme, setTheme };
+}

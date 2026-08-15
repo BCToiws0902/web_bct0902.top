@@ -15,7 +15,7 @@ const Navbar = () => {
   const { currentUser, isAdmin, logout } = useAuth();
   const logoUrl = config?.appearance?.logoUrl || '/logobct.png';
   const { t, i18n } = useTranslation();
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -175,6 +175,29 @@ const Navbar = () => {
         </ul>
 
         <div style={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-end', gap: '1.2rem', alignItems: 'center', minWidth: 0 }}>
+          <button 
+            onClick={toggleTheme} 
+            title={theme === 'dark' ? "Chuyển sang Giao diện Sáng" : "Chuyển sang Giao diện Tối"}
+            style={{ 
+              color: 'var(--text-primary)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid var(--bg-glass-border)',
+              cursor: 'pointer',
+              flexShrink: 0,
+              transition: 'all 0.3s ease'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
+            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+          >
+            {theme === 'dark' ? <Sun size={19} color="#ffb000" /> : <Moon size={19} color="#7c3aed" />}
+          </button>
+
           <button onClick={toggleLanguage} style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
             <Globe size={20} />
             <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{i18n.language.toUpperCase()}</span>
