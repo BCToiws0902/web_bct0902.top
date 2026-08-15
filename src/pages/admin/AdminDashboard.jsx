@@ -572,8 +572,7 @@ const AdminDashboard = () => {
         { id: 'analytics', label: 'THỐNG KÊ TRAFFIC', icon: <BarChart3 size={18} /> },
     { id: 'blog', label: 'QUẢN LÝ BLOG', icon: <FileText size={18} /> },
     { id: 'projects', label: 'QUẢN LÝ DỰ ÁN', icon: <Package size={18} /> },
-    { id: 'users', label: 'QUẢN LÝ TÀI KHOẢN', icon: <Users size={18} /> },
-    { id: 'integrations', label: 'DỊCH VỤ & API', icon: <Key size={18} /> }
+    { id: 'users', label: 'QUẢN LÝ TÀI KHOẢN', icon: <Users size={18} /> }
 
   ];
 
@@ -1206,52 +1205,7 @@ const AdminDashboard = () => {
               </motion.div>
             )}
 
-            {activeTab === 'integrations' && (
-              <motion.div key="integrations" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="config-section">
-                <div className="admin-card">
-                  <div className="config-section-title">
-                    <Key size={18} /> API & DỊCH VỤ NGOÀI
-                  </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-                    <div style={{ borderBottom: '1px solid var(--admin-border)', paddingBottom: '2.5rem' }}>
-                      <h4 style={{ color: 'var(--admin-accent)', marginBottom: '1.5rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Mail size={16} /> EMAILJS CONFIGURATION
-                      </h4>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                        <div className="form-group">
-                          <label>SERVICE ID</label>
-                          <input className="admin-input" type="text" value={localConfig.integrations?.emailjsServiceId || ''} onChange={(e) => updateNested('integrations', 'emailjsServiceId', e.target.value)} placeholder="service_..." />
-                        </div>
-                        <div className="form-group">
-                          <label>TEMPLATE ID</label>
-                          <input className="admin-input" type="text" value={localConfig.integrations?.emailjsTemplateId || ''} onChange={(e) => updateNested('integrations', 'emailjsTemplateId', e.target.value)} placeholder="template_..." />
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label>PUBLIC KEY (USER ID)</label>
-                        <input className="admin-input" type="text" value={localConfig.integrations?.emailjsPublicKey || ''} onChange={(e) => updateNested('integrations', 'emailjsPublicKey', e.target.value)} placeholder="Mã khóa công khai..." />
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 style={{ color: 'var(--admin-accent)', marginBottom: '1.5rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Brain size={16} /> GOOGLE GEMINI ENGINE
-                      </h4>
-                      <div className="form-group">
-                        <label>GEMINI API KEY</label>
-                        <div style={{ position: 'relative' }}>
-                          <input className="admin-input" type="password" value={localConfig.integrations?.geminiKey || ''} onChange={(e) => updateNested('integrations', 'geminiKey', e.target.value)} placeholder="Dán API Key..." style={{ paddingRight: '3rem' }} />
-                          <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.3 }}>
-                            <Lock size={16} />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
 
             {activeTab === 'maintenance' && (
               <motion.div key="maintenance" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="config-section">
