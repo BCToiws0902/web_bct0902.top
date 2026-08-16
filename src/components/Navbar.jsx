@@ -236,7 +236,7 @@ const Navbar = () => {
                     style={{ position: 'absolute', top: 'calc(100% + 0.5rem)', right: 0, background: 'rgba(15, 15, 20, 0.95)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', minWidth: '180px', overflow: 'hidden', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}
                   >
                     <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Đang đăng nhập với:</p>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('common.logged_in_as')}</p>
                       <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', fontWeight: 'bold', color: '#fff', wordBreak: 'break-all' }}>{currentUser?.email}</p>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>

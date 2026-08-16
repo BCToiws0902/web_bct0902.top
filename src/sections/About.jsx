@@ -253,16 +253,15 @@ const About = () => {
             className="glass-panel"
             style={{ 
               padding: '2rem', 
-              background: '#0a0a0a', 
-              border: '1px solid #222', 
-              boxShadow: '0 20px 40px rgba(0,0,0,0.6)' 
+              fontFamily: 'var(--font-mono)',
+              minHeight: '260px'
             }}
           >
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #222', paddingBottom: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--bg-glass-border)', paddingBottom: '1rem' }}>
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f56' }} />
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffbd2e' }} />
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#27c93f' }} />
-              <span style={{ fontSize: '0.75rem', color: '#666', marginLeft: 'auto', fontFamily: 'var(--font-mono)' }}>{t('about.bio_file')}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto', fontFamily: 'var(--font-mono)' }}>{t('about.bio_file')}</span>
             </div>
             <BioTerminal />
           </motion.div>

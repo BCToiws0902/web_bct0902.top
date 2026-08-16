@@ -10,7 +10,7 @@
     padding: 8rem 2rem 4rem;
     position: relative;
     overflow-x: hidden;
-    background: radial-gradient(circle at center, #0a0a0c 0%, #050505 100%);
+    background: var(--bg-primary);
 }
 
 @media (max-width: 768px) {
@@ -82,10 +82,16 @@
     gap: 2rem;
 }
 
+.input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2.2rem;
+}
+
 .input-group {
     display: flex;
     flex-direction: column;
-    gap: 0.8rem;
+    gap: 0.6rem;
 }
 
 .input-group label {
@@ -103,10 +109,10 @@
 .main-input {
     width: 100%;
     padding: 1.2rem 1.5rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: var(--bg-glass);
+    border: 1px solid var(--bg-glass-border);
     border-radius: 12px;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 1.1rem;
     outline: none;
     transition: all 0.3s ease;
@@ -201,7 +207,7 @@
     }
 
     .shortener-page-wrapper {
-        background: #050507 !important;
+        background: var(--bg-primary) !important;
         padding-top: 135px !important; 
         padding-bottom: 90px !important;
         min-height: 100vh;
@@ -222,8 +228,8 @@
         right: 0;
         width: 100% !important;
         height: 55px;
-        background: #0a0a0c;
-        border-bottom: 1px solid rgba(255, 176, 0, 0.1);
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--bg-glass-border);
         z-index: 2400;
         padding: 0.4rem;
         gap: 0.4rem;

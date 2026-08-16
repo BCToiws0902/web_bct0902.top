@@ -148,7 +148,51 @@
     "newsletters": "NEWSLETTERS",
     "analytics": "ANALYTICS"
   },
+  "shortener": {
+    "title": "LINK SHORTENER",
+    "subtitle": "Smart link shortening system for Iris Ecosystem",
+    "long_url_label": "LONG URL",
+    "long_url_placeholder": "Paste your long URL here (https://...)",
+    "custom_slug_label": "CUSTOM ALIAS (SLUG)",
+    "custom_slug_placeholder": "e.g. vietnam (optional)",
+    "btn_shorten": "SHORTEN NOW",
+    "hint": "Leave blank for auto-generated random slug.",
+    "manage_title": "MANAGE LINKS",
+    "login_prompt": "Please log in to manage and store your links permanently.",
+    "btn_login_now": "LOG IN NOW",
+    "loading": "Loading data...",
+    "empty": "No links created yet.",
+    "status": "Status:",
+    "status_expired": "Expired",
+    "status_perm": "Permanent",
+    "owner": "Creator:",
+    "result_title": "SHORTEN RESULT",
+    "notice_title": "SYSTEM ANNOUNCEMENT",
+    "notice_highlight": "Log in to get full administrative control!",
+    "edit_title": "EDIT LINK",
+    "btn_cancel": "CANCEL",
+    "btn_save": "SAVE CHANGES",
+    "qr_title": "QR CODE DETAILS",
+    "btn_download_qr": "DOWNLOAD QR",
+    "err_enter_url": "Please enter a valid original URL to shorten."
+  },
+  "login": {
+    "title_login": "PLEASE LOG IN TO CONTINUE",
+    "title_register": "ENTER DETAILS TO CREATE NEW ACCOUNT",
+    "remember_me": "Remember me",
+    "back_to_login": "Already have an account? Back to LOG IN",
+    "enter_6_digits": "Enter 6-digit code from your authenticator app",
+    "scan_qr": "Scan QR code with Google Authenticator App",
+    "err_wrong_pass": "Incorrect password or username.",
+    "msg_profile_success": "Profile created successfully! Welcome aboard.",
+    "err_email_exists": "This email account already exists. Forgot password?"
+  },
+  "redirect": {
+    "not_found": "This short link does not exist in BCT0902 system or has been removed.",
+    "error": "A system error occurred while processing your redirect request."
+  },
   "common": {
-    "error": "An error occurred, please try again."
+    "error": "An error occurred, please try again.",
+    "logged_in_as": "Logged in as:"
   }
 }

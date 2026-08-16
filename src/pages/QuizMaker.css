@@ -1,7 +1,7 @@
 .quiz-maker-wrapper {
     min-height: 100vh;
     padding: 6rem 2rem 4rem;
-    background: radial-gradient(circle at center, var(--bg-primary) 0%, #000 100%);
+    background: var(--bg-primary);
 }
 
 .quiz-maker-wrapper .container {
@@ -1018,8 +1018,8 @@
 .quiz-success-modal {
     width: 100%;
     max-width: 500px;
-    background: #0f0f12;
-    border: 1px solid rgba(0, 240, 255, 0.3);
+    background: var(--bg-secondary);
+    border: 1px solid var(--bg-glass-border);
     border-radius: 32px;
     padding: 3.5rem 2.5rem;
     text-align: center;

@@ -13,7 +13,8 @@ const NotFound = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: '#0a0a0c',
+      background: 'var(--bg-primary)',
+      color: 'var(--text-primary)',
       position: 'relative',
       overflow: 'hidden',
       padding: '2rem'
@@ -25,7 +26,7 @@ const NotFound = () => {
         left: '10%',
         width: '400px',
         height: '400px',
-        background: 'radial-gradient(circle, rgba(0, 104, 255, 0.1) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)',
         borderRadius: '50%',
         zIndex: 1,
         pointerEvents: 'none'
@@ -36,7 +37,7 @@ const NotFound = () => {
         right: '5%',
         width: '500px',
         height: '500px',
-        background: 'radial-gradient(circle, rgba(0, 255, 136, 0.05) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)',
         borderRadius: '50%',
         zIndex: 1,
         pointerEvents: 'none'
@@ -46,17 +47,14 @@ const NotFound = () => {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
+        className="glass-panel"
         style={{
           width: '100%',
           maxWidth: '600px',
           padding: '4rem 2rem',
-          background: 'rgba(255, 255, 255, 0.03)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
           borderRadius: '40px',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
           textAlign: 'center',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.2)',
           zIndex: 10
         }}
       >

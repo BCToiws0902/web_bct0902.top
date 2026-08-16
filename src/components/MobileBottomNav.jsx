@@ -2,7 +2,10 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, ClipboardList, Users, HelpCircle, Link2, Layout } from 'lucide-react';
 
+import { useTranslation } from 'react-i18next';
+
 const MobileBottomNav = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const path = location.pathname;
 
@@ -12,11 +15,11 @@ const MobileBottomNav = () => {
   };
 
   const navItems = [
-    { to: '/',           icon: <Home size={20} />,          label: 'TRANG CHỦ',  isLink: true },
-    { to: '/chronicles', icon: <ClipboardList size={20} />,  label: 'HÀNH TRÌNH', isLink: true },
-    { to: '/showcase',   icon: <Layout size={20} />,         label: 'TRIỂN LÃM',  isLink: true },
-    { to: '/blog',       icon: <Users size={20} />,          label: 'BÀI VIẾT',   isLink: true },
-    { to: '/shortener',  icon: <Link2 size={20} />,          label: 'RÚT GỌN',    isLink: true },
+    { to: '/',           icon: <Home size={20} />,          label: t('nav.home').toUpperCase(),  isLink: true },
+    { to: '/chronicles', icon: <ClipboardList size={20} />,  label: t('nav.chronicles').toUpperCase(), isLink: true },
+    { to: '/showcase',   icon: <Layout size={20} />,         label: t('nav.utilities').toUpperCase(),  isLink: true },
+    { to: '/blog',       icon: <Users size={20} />,          label: t('nav.blog').toUpperCase(),   isLink: true },
+    { to: '/shortener',  icon: <Link2 size={20} />,          label: t('nav.shortener').toUpperCase(),    isLink: true },
     { to: '/quiz-maker', icon: <HelpCircle size={20} />,     label: 'QUIZ',       isLink: true },
   ];
 

@@ -213,16 +213,35 @@ const Login = () => {
     if (otpCode.length !== 6) return;
 
     try {
+      const secretObj = typeof totpSecret === 'string' 
+        ? OTPAuth.Secret.fromBase32(totpSecret) 
+        : totpSecret;
+
       const totp = new OTPAuth.TOTP({
         issuer: 'BCT0902_SYSTEM',
         label: 'admin',
         algorithm: 'SHA1',
         digits: 6,
         period: 30,
-        secret: totpSecret,
+        secret: secretObj,
       });
 
-      const delta = totp.validate({ token: otpCode, window: 1 });
+      // Window 4 allows ±120 seconds tolerance for any clock drift
+      let delta = totp.validate({ token: otpCode, window: 4 });
+
+      // Fallback check in case the secret was saved as raw string
+      if (delta === null && typeof totpSecret === 'string') {
+        const fallbackTotp = new OTPAuth.TOTP({
+          issuer: 'BCT0902_SYSTEM',
+          label: 'admin',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          secret: totpSecret,
+        });
+        delta = fallbackTotp.validate({ token: otpCode, window: 4 });
+      }
+
       if (delta !== null) {
         if (step === '2fa_setup') {
           await setDoc(doc(db, 'system', 'admin_config'), {
@@ -316,7 +335,7 @@ const Login = () => {
                 </div>
                 <div style={{ position: 'relative' }}>
                   <Lock size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input type={showPassword ? "text" : "password"} placeholder={authMode === 'login' ? "Mật mã bảo mật" : "Nhập mật khẩu (Tối thiểu 6 ký tự)"} value={password} onChange={(e) => setPassword(e.target.value)} required style={{ width: '100%', padding: '1rem 3rem 1rem 3rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontFamily: 'var(--font-mono)', outline: 'none' }} />
+                  <input type={showPassword ? "text" : "password"} placeholder={authMode === 'login' ? t('login.password_placeholder') : t('login.password_register')} value={password} onChange={(e) => setPassword(e.target.value)} required style={{ width: '100%', padding: '1rem 3rem 1rem 3rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontFamily: 'var(--font-mono)', outline: 'none' }} />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -325,7 +344,7 @@ const Login = () => {
                 {authMode === 'register' && (
                   <div style={{ position: 'relative' }}>
                     <Lock size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input type={showPassword ? "text" : "password"} placeholder="Xác nhận lại mật khẩu" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required style={{ width: '100%', padding: '1rem 3rem 1rem 3rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontFamily: 'var(--font-mono)', outline: 'none' }} />
+                    <input type={showPassword ? "text" : "password"} placeholder={t('login.confirm_password')} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required style={{ width: '100%', padding: '1rem 3rem 1rem 3rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontFamily: 'var(--font-mono)', outline: 'none' }} />
                   </div>
                 )}
                 
@@ -336,24 +355,24 @@ const Login = () => {
                         <input type="checkbox" id="remember" style={{ opacity: 0, position: 'absolute', cursor: 'pointer', width: '100%', height: '100%', zIndex: 2 }} />
                         <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: '2px solid var(--accent-main)', background: 'transparent', transition: 'all 0.3s' }}></div>
                       </div>
-                      <label htmlFor="remember" style={{ color: 'var(--text-muted)', fontSize: '0.85rem', cursor: 'pointer' }}>Ghi nhớ đăng nhập</label>
+                      <label htmlFor="remember" style={{ color: 'var(--text-muted)', fontSize: '0.85rem', cursor: 'pointer' }}>{t('login.remember_me')}</label>
                     </div>
-                    <button type="button" onClick={recoverPassword} style={{ background: 'none', border: 'none', color: 'var(--accent-secondary)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}>Quên mật khẩu?</button>
+                    <button type="button" onClick={recoverPassword} style={{ background: 'none', border: 'none', color: 'var(--accent-secondary)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}>{t('login.forgot_password')}</button>
                   </div>
                 )}
 
                 <button type="submit" className="btn-primary" style={{ width: '100%', padding: '1rem', opacity: loading ? 0.7 : 1, marginTop: '0.5rem', fontFamily: "var(--font-heading), 'Chakra Petch', sans-serif", letterSpacing: '1px' }} disabled={loading}>
-                  {loading ? 'ĐANG CHẠY TRÌNH KẾT NỐI...' : (authMode === 'login' ? 'XÁC NHẬN TRUY CẬP' : 'KHỞI TẠO TÀI KHOẢN MỚI')}
+                  {loading ? t('login.loading') : (authMode === 'login' ? t('login.btn_login') : t('login.btn_register'))}
                 </button>
 
                 <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
                   {authMode === 'login' ? (
                     <button type="button" onClick={() => toggleAuthMode('register')} style={{ width: '100%', padding: '0.8rem', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--accent-secondary)', color: 'var(--accent-secondary)', borderRadius: '8px', fontSize: '0.9rem', cursor: 'pointer', transition: 'all 0.3s', fontFamily: "var(--font-heading), 'Chakra Petch', sans-serif" }} onMouseOver={(e) => { e.target.style.background = 'var(--accent-secondary)'; e.target.style.color = '#000'; }} onMouseOut={(e) => { e.target.style.background = 'rgba(255, 255, 255, 0.05)'; e.target.style.color = 'var(--accent-secondary)'; }}>
-                      ĐĂNG KÝ TÀI KHOẢN
+                      {t('login.go_to_register')}
                     </button>
                   ) : (
                     <button type="button" onClick={() => toggleAuthMode('login')} style={{ color: 'var(--accent-secondary)', fontSize: '0.85rem', textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none' }}>
-                      Đã có hồ sơ? Quay lại ĐĂNG NHẬP
+                      {t('login.back_to_login')}
                     </button>
                   )}
                 </div>
@@ -431,9 +450,9 @@ const Login = () => {
           <motion.div
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            style={{ background: '#0A0A0A', width: '90%', maxWidth: '550px', padding: '3.5rem 3rem 3rem', border: '1px solid rgba(212, 175, 55, 0.4)', borderRadius: '2px', boxShadow: '0 20px 50px rgba(0,0,0,0.8), inset 0 0 60px rgba(212, 175, 55, 0.05)', textAlign: 'center', position: 'relative' }}
+            style={{ background: 'var(--bg-secondary)', width: '90%', maxWidth: '550px', padding: '3.5rem 3rem 3rem', border: '1px solid rgba(212, 175, 55, 0.4)', borderRadius: '12px', boxShadow: '0 20px 50px rgba(0,0,0,0.4)', textAlign: 'center', position: 'relative' }}
           >
-             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translate(-50%, -50%)', background: '#0A0A0A', padding: '0 1.5rem', color: 'var(--accent-gold)' }}>
+             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--bg-secondary)', padding: '0 1.5rem', color: 'var(--accent-gold)' }}>
                <ShieldCheck size={36} />
              </div>
              

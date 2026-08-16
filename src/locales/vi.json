@@ -158,10 +158,54 @@
   },
   "admin": {
     "dashboard": "BẢNG ĐIỀU KHIỂN",
-    "newsletters": "BẢN TIN AI",
-    "analytics": "PHÂN TÍCH"
+    "newsletters": "BẢN TIN",
+    "analytics": "THỐNG KÊ"
+  },
+  "shortener": {
+    "title": "RÚT GỌN LIÊN KẾT",
+    "subtitle": "Hệ thống rút gọn link thông minh cho Iris Ecosystem",
+    "long_url_label": "ĐƯỜNG DẪN GỐC (LONG URL)",
+    "long_url_placeholder": "Dán link dài tại đây (https://...)",
+    "custom_slug_label": "MÃ ĐỊNH DANH TÙY CHỈNH (SLUG)",
+    "custom_slug_placeholder": "ví dụ: vietnam (tùy chọn)",
+    "btn_shorten": "RÚT GỌN NGAY",
+    "hint": "Để trống để hệ thống tự tạo mã ngẫu nhiên.",
+    "manage_title": "QUẢN LÝ LIÊN KẾT",
+    "login_prompt": "Hãy đăng nhập để quản lý và lưu trữ liên kết vĩnh viễn.",
+    "btn_login_now": "ĐĂNG NHẬP NGAY",
+    "loading": "Đang tải dữ liệu...",
+    "empty": "Chưa có liên kết nào được tạo.",
+    "status": "Trạng thái:",
+    "status_expired": "Hết hạn",
+    "status_perm": "Vĩnh viễn",
+    "owner": "Người tạo:",
+    "result_title": "KẾT QUẢ RÚT GỌN",
+    "notice_title": "THÔNG BÁO HỆ THỐNG",
+    "notice_highlight": "Hãy đăng nhập để có quyền kiểm soát tối đa!",
+    "edit_title": "CHỈNH SỬA LIÊN KẾT",
+    "btn_cancel": "HỦY",
+    "btn_save": "LƯU THAY ĐỔI",
+    "qr_title": "MÃ QR CHI TIẾT",
+    "btn_download_qr": "TẢI MÃ QR",
+    "err_enter_url": "Vui lòng nhập đường dẫn gốc cần rút gọn."
+  },
+  "login": {
+    "title_login": "VUI LÒNG ĐĂNG NHẬP ĐỂ TIẾP TỤC",
+    "title_register": "ĐIỀN THÔNG TIN ĐỂ TẠO CẤP PHÉP MỚI",
+    "remember_me": "Ghi nhớ đăng nhập",
+    "back_to_login": "Đã có hồ sơ? Quay lại ĐĂNG NHẬP",
+    "enter_6_digits": "Nhập mã 6 chữ số từ điện thoại của bạn",
+    "scan_qr": "Quét mã QR bằng App Google Authenticator",
+    "err_wrong_pass": "Sai mật khẩu hoặc tên đăng nhập.",
+    "msg_profile_success": "Tạo hồ sơ thành công! Mời bạn tiếp tục sử dụng hệ thống.",
+    "err_email_exists": "Tài khoản Email này đã tồn tại. Quên mật khẩu?"
+  },
+  "redirect": {
+    "not_found": "Đường dẫn rút gọn này không tồn tại trong hệ thống BCT0902 hoặc đã bị gỡ bỏ.",
+    "error": "Đã xảy ra lỗi hệ thống khi cố gắng xử lý yêu cầu chuyển hướng của bạn."
   },
   "common": {
-    "error": "Đã xảy ra lỗi, vui lòng thử lại."
+    "error": "Có lỗi xảy ra, vui lòng thử lại.",
+    "logged_in_as": "Đang đăng nhập với:"
   }
 }

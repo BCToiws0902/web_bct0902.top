@@ -4,8 +4,10 @@ import { db } from '../firebase';
 import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { motion } from 'framer-motion';
 import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const ShortLinkRedirect = () => {
+  const { t } = useTranslation();
   const { slug } = useParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState('loading'); 
@@ -48,33 +50,33 @@ const ShortLinkRedirect = () => {
 
   if (status === 'loading') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#050505', color: '#fff' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
           style={{ marginBottom: '1.5rem' }}
         >
-          <Loader2 size={48} color="var(--accent-main, #00f0ff)" />
+          <Loader2 size={48} color="var(--accent-main)" />
         </motion.div>
-        <h2 style={{ fontFamily: 'var(--font-heading)', letterSpacing: '2px' }}>ĐANG CHUYỂN HƯỚNG...</h2>
-        <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Vui lòng chờ trong giây lát.</p>
+        <h2 style={{ fontFamily: 'var(--font-heading)', letterSpacing: '2px' }}>REDIRECTING...</h2>
+        <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Please wait a moment.</p>
       </div>
     );
   }
 
   if (status === 'not_found' || status === 'error' || status === 'expired') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#050505', color: '#fff', padding: '2rem', textAlign: 'center' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)', color: 'var(--text-primary)', padding: '2rem', textAlign: 'center' }}>
         <AlertCircle size={64} color="#ef4444" style={{ marginBottom: '1.5rem' }} />
         <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '2.5rem', marginBottom: '1rem' }}>
           {status === 'expired' ? 'LIÊN KẾT ĐÃ HẾT HẠN' : 'LIÊN KẾT KHÔNG TỒN TẠI'}
         </h1>
         <p style={{ color: 'var(--text-muted)', maxWidth: '500px', lineHeight: 1.6, marginBottom: '2.5rem' }}>
           {status === 'expired' 
-            ? "Liên kết này được tạo bởi tài khoản Khách và đã hết hạn sau 30 ngày sử dụng."
+            ? "This short link has expired after 30 days."
             : status === 'not_found' 
-              ? "Đường dẫn rút gọn này không tồn tại trong hệ thống BCT0902 hoặc đã bị gỡ bỏ." 
-              : "Đã xảy ra lỗi hệ thống khi cố gắng xử lý yêu cầu chuyển hướng của bạn."}
+              ? t('redirect.not_found') 
+              : t('redirect.error')}
         </p>
         <button 
           onClick={() => navigate('/')}
