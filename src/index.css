@@ -19,6 +19,12 @@
   --success: #10b981;
   --danger: #ef4444;
 
+  --color-social-facebook: #1877F2;
+  --color-social-github: #ffffff;
+  --color-social-youtube: #FF0000;
+  --color-social-linkedin: #0A66C2;
+  --color-social-messenger: #0084FF;
+
   --font-sans: 'Inter', sans-serif;
   --font-heading: 'Outfit', sans-serif;
   --font-mono: 'Fira Code', monospace;
@@ -27,6 +33,7 @@
   
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
+  --section-title-size: clamp(1.8rem, 5vw, 3rem);
   --grid-color: rgba(255, 255, 255, 0.05);
   --grid-size: 50px;
 }
@@ -102,11 +109,13 @@ a {
   transition: color var(--transition-normal);
 }
 
-button {
-  cursor: pointer;
-  border: none;
-  background: none;
-  font-family: var(--font-sans);
+button, a, input, select, textarea {
+  font-family: inherit;
+}
+
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent-main) !important;
+  outline-offset: 3px !important;
 }
 
 .container {
@@ -124,10 +133,17 @@ button {
 
 .glass-panel {
   background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--bg-glass-border);
-  border-radius: 16px;
+  border-radius: 12px;
+}
+
+.card-clean {
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-glass-border);
+  border-radius: 12px;
+  padding: 1.5rem;
 }
 
 .btn-primary {
@@ -135,19 +151,19 @@ button {
   color: #000;
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
-  font-family: var(--font-mono);
+  font-family: var(--font-heading);
   font-weight: 600;
   font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  box-shadow: 0 0 15px var(--accent-glow);
+  letter-spacing: 0.5px;
+  border: 1px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transition: all var(--transition-normal);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 25px var(--accent-glow);
-  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  filter: brightness(1.08);
 }
 
 [data-theme='light'] .btn-primary {
@@ -163,12 +179,15 @@ button {
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
   border: 1px solid var(--bg-glass-border);
-  font-family: var(--font-mono);
+  font-family: var(--font-heading);
   font-weight: 600;
   font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   transition: all var(--transition-normal);
+}
+
+.btn-primary:active, .btn-secondary:active {
+  transform: scale(0.97) !important;
 }
 
 .btn-secondary:hover {

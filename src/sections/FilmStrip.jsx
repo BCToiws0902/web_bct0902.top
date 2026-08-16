@@ -49,7 +49,7 @@ const FilmStrip = () => {
                 {isVideo ? (
                   <video src={src} autoPlay muted loop playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <img src={src} alt={`Ký ức ${index}`} />
+                  <img src={src} alt={`Ký ức ${index}`} loading="lazy" decoding="async" />
                 )}
               </div>
             );

@@ -177,14 +177,15 @@ const Navbar = () => {
         <div style={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-end', gap: '1.2rem', alignItems: 'center', minWidth: 0 }}>
           <button 
             onClick={toggleTheme} 
+            aria-label={theme === 'dark' ? "Chuyển sang Giao diện Sáng" : "Chuyển sang Giao diện Tối"}
             title={theme === 'dark' ? "Chuyển sang Giao diện Sáng" : "Chuyển sang Giao diện Tối"}
             style={{ 
               color: 'var(--text-primary)', 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center',
-              width: '36px',
-              height: '36px',
+              width: '44px',
+              height: '44px',
               borderRadius: '50%',
               background: 'rgba(255, 255, 255, 0.05)',
               border: '1px solid var(--bg-glass-border)',
@@ -195,20 +196,27 @@ const Navbar = () => {
             onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
             onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
           >
-            {theme === 'dark' ? <Sun size={19} color="#ffb000" /> : <Moon size={19} color="#7c3aed" />}
+            {theme === 'dark' ? <Sun size={20} color="var(--accent-gold)" /> : <Moon size={20} color="var(--accent-main)" />}
           </button>
 
-          <button onClick={toggleLanguage} style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+          <button 
+            onClick={toggleLanguage} 
+            aria-label="Chuyển đổi Ngôn ngữ Language"
+            title="Chuyển đổi Ngôn ngữ Language"
+            style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0, height: '44px', padding: '0 0.5rem', borderRadius: '8px', cursor: 'pointer' }}
+          >
             <Globe size={20} />
-            <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{i18n.language.toUpperCase()}</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{i18n.language.toUpperCase()}</span>
           </button>
 
-          <div style={{ width: '1px', height: '20px', background: 'var(--bg-glass-border)', flexShrink: 0 }} />
+          <div style={{ width: '1px', height: '24px', background: 'var(--bg-glass-border)', flexShrink: 0 }} />
 
           {(currentUser || isAdmin) ? (
             <div style={{ position: 'relative' }} ref={dropdownRef}>
               <button 
                 onClick={() => setDropdownOpen(!dropdownOpen)}
+                aria-label="Menu Tài Khoản Cá Nhân"
+                aria-expanded={dropdownOpen}
                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255, 255, 255, 0.05)', padding: '0.3rem 0.8rem 0.3rem 0.3rem', borderRadius: '30px', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.3s' }}
                 onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
                 onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}

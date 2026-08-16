@@ -48,10 +48,10 @@ const Skills = () => {
         {skillCategories.map((cat, index) => (
           <motion.div
             key={index}
-            initial={{ opacity: 0, y: 50 }}
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 0.5, delay: index * 0.2 }}
+            transition={{ duration: 0.4, delay: index * 0.15, ease: [0.16, 1, 0.3, 1] }}
             className="glass-panel"
             style={{ padding: '2rem', position: 'relative', overflow: 'hidden' }}
           >

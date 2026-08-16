@@ -63,30 +63,23 @@ const Footer = ({ technicalFont }) => {
   ];
 
   const handleSubmit = async (e) => {
-    console.log(">>> NÚT GỬI ĐÃ ĐƯỢC BẤM!");
     e.preventDefault();
-    
-    console.log("Dữ liệu hiện tại:", formData);
 
     if (!formData.message.trim()) {
-      console.warn("Lỗi: Tin nhắn đang trống, không thể gửi!");
       alert("Vui lòng nhập nội dung tin nhắn!");
       return;
     }
 
     setStatus('sending');
-    console.log("Trạng thái chuyển sang: SENDING...");
     let firestoreSuccess = false;
     let emailSuccess = false;
 
     const firestorePromise = (async () => {
       try {
-        console.log("Đang lưu vào Firestore...");
         await addDoc(collection(db, 'contact_messages'), {
           ...formData,
           timestamp: serverTimestamp()
         });
-        console.log("Firestore: OK!");
         return true;
       } catch (err) {
         console.error("Firestore Error:", err);
@@ -178,18 +171,14 @@ const Footer = ({ technicalFont }) => {
                 target="_blank"
                 rel="noreferrer"
                 className="glass-panel" 
-                style={{ padding: '0.8rem', display: 'flex', transition: 'all 0.3s ease' }}
+                style={{ padding: '0.8rem', display: 'flex', transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-5px)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
                   e.currentTarget.style.borderColor = social.brandColor;
-                  const icon = e.currentTarget.querySelector('svg') || e.currentTarget.querySelector('img');
-                  if (icon) icon.style.filter = `drop-shadow(0 0 8px ${social.brandColor})`;
                 }}
                 onMouseOut={(e) => {
                   e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.borderColor = 'var(--bg-glass-border)';
-                  const icon = e.currentTarget.querySelector('svg') || e.currentTarget.querySelector('img');
-                  if (icon) icon.style.filter = 'none';
                 }}
               >
                 {social.icon}
@@ -213,7 +202,9 @@ const Footer = ({ technicalFont }) => {
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div className="footer-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
               <input 
+                id="footer-contact-name"
                 type="text" 
+                aria-label={t('footer.placeholder_name')}
                 placeholder={t('footer.placeholder_name')}
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -232,7 +223,9 @@ const Footer = ({ technicalFont }) => {
                 onBlur={(e) => e.target.style.borderColor = 'var(--bg-glass-border)'}
               />
               <input 
+                id="footer-contact-email"
                 type="email" 
+                aria-label={t('footer.placeholder_email')}
                 placeholder={t('footer.placeholder_email')}
                 required
                 value={formData.email}
@@ -253,6 +246,8 @@ const Footer = ({ technicalFont }) => {
               />
             </div>
             <textarea 
+              id="footer-contact-message"
+              aria-label={t('footer.placeholder_message')}
               placeholder={t('footer.placeholder_message')}
               rows="4"
               required

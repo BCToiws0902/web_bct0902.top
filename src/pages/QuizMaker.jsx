@@ -1021,7 +1021,7 @@ const QuizMaker = () => {
                     <button onClick={handleClearResults} className="btn-icon-text delete">
                       <Trash2 size={18} /> XÓA DỮ LIỆU
                     </button>
-                    <button onClick={() => setShowLeaderboard(false)} className="close-btn"><X size={24} /></button>
+                    <button onClick={() => setShowLeaderboard(false)} className="close-btn" aria-label="Đóng cửa sổ Bảng xếp hạng"><X size={24} /></button>
                   </div>
                 </div>
 
@@ -1120,7 +1120,7 @@ const QuizMaker = () => {
                       </p>
                     </div>
                   </div>
-                  <button onClick={() => setShowAdminReview(false)} className="close-btn"><X size={24} /></button>
+                  <button onClick={() => setShowAdminReview(false)} className="close-btn" aria-label="Đóng cửa sổ Xem lại bài làm"><X size={24} /></button>
                 </div>
                 <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '2rem', background: 'rgba(0,0,0,0.3)' }}>
                   {selectedResult.questions ? (
@@ -1249,7 +1249,7 @@ const QuizMaker = () => {
               >
                 <div className="modal-header">
                   <h3><User size={24} color="var(--accent-main)" /> CHỌN NGƯỜI NHẬN</h3>
-                  <button onClick={() => setShowShareModal(false)} className="close-btn"><X size={24} /></button>
+                  <button onClick={() => setShowShareModal(false)} className="close-btn" aria-label="Đóng cửa sổ Chia sẻ"><X size={24} /></button>
                 </div>
                 <div className="modal-body">
                   <div className="search-box-light" style={{ position: 'relative', marginBottom: '1.5rem' }}>

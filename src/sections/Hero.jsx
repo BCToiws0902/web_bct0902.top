@@ -64,7 +64,7 @@ const Hero = () => {
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-secondary)', marginBottom: '1.5rem', letterSpacing: '2px' }}
+          style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, color: 'var(--accent-secondary)', marginBottom: '1rem', letterSpacing: '1px', fontSize: '1.1rem' }}
         >
           {t('hero.greeting')}
         </motion.p>

@@ -340,10 +340,11 @@ const LinkShortener = () => {
             <form onSubmit={handleShorten} className="shortener-form">
               <div className="input-section">
                 <div className="input-group">
-                  <label className="desktop-label">ĐƯỜNG DẪN GỐC (LONG URL)</label>
-                  <label className="mobile-label"><Link2 size={18} color="#ff9a3d" /> ĐƯỜNG DẪN GỐC (LONG URL)</label>
+                  <label htmlFor="shortener-long-url-input" className="desktop-label">ĐƯỜNG DẪN GỐC (LONG URL)</label>
+                  <label htmlFor="shortener-long-url-input" className="mobile-label"><Link2 size={18} color="var(--accent-main)" /> ĐƯỜNG DẪN GỐC (LONG URL)</label>
                   
                   <input 
+                    id="shortener-long-url-input"
                     type="url" 
                     placeholder="Dán link dài tại đây (https://...)" 
                     value={longUrl}
@@ -354,12 +355,13 @@ const LinkShortener = () => {
                 </div>
 
                 <div className="input-group">
-                  <label className="desktop-label">MÃ ĐỊNH DANH TÙY CHỈNH (SLUG)</label>
-                  <label className="mobile-label"><Globe size={18} color="#ff9a3d" /> MÃ ĐỊNH DANH TÙY CHỈNH (SLUG)</label>
+                  <label htmlFor="shortener-custom-slug-input" className="desktop-label">MÃ ĐỊNH DANH TÙY CHỈNH (SLUG)</label>
+                  <label htmlFor="shortener-custom-slug-input" className="mobile-label"><Globe size={18} color="var(--accent-main)" /> MÃ ĐỊNH DANH TÙY CHỈNH (SLUG)</label>
                   
                   <div className="slug-input-wrapper">
                     <span>bct0902.top/</span>
                     <input 
+                      id="shortener-custom-slug-input"
                       type="text" 
                       placeholder="ví dụ: vietnam (tùy chọn)" 
                       value={customSlug}

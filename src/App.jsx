@@ -16,18 +16,18 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LoadingScreen from './components/LoadingScreen';
 import { AnimatePresence } from 'framer-motion';
 import ScrollToTop from './components/ScrollToTop';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import BlogCMS from './pages/admin/BlogCMS';
-import Blog from './pages/blog/Blog'; 
-import BlogPost from './pages/blog/BlogPost';
-import Chronicles from './pages/Chronicles';
-import LinkShortener from './pages/LinkShortener';
-import ShortLinkRedirect from './pages/ShortLinkRedirect';
-import NotFound from './pages/NotFound';
-import QuizMaker from './pages/QuizMaker';
-import QuizPlayer from './pages/QuizPlayer';
-import Showcase from './pages/Showcase';
-import ProjectDetail from './pages/ProjectDetail';
+const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
+const BlogCMS = React.lazy(() => import('./pages/admin/BlogCMS'));
+const Blog = React.lazy(() => import('./pages/blog/Blog')); 
+const BlogPost = React.lazy(() => import('./pages/blog/BlogPost'));
+const Chronicles = React.lazy(() => import('./pages/Chronicles'));
+const LinkShortener = React.lazy(() => import('./pages/LinkShortener'));
+const ShortLinkRedirect = React.lazy(() => import('./pages/ShortLinkRedirect'));
+const NotFound = React.lazy(() => import('./pages/NotFound'));
+const QuizMaker = React.lazy(() => import('./pages/QuizMaker'));
+const QuizPlayer = React.lazy(() => import('./pages/QuizPlayer'));
+const Showcase = React.lazy(() => import('./pages/Showcase'));
+const ProjectDetail = React.lazy(() => import('./pages/ProjectDetail'));
 
 import PageGuard from './components/PageGuard';
 import MobileBottomNav from './components/MobileBottomNav';
@@ -90,43 +90,45 @@ function AppRoutes() {
       <div style={{ position: 'relative' }}>
         <Background />
         {!isLoginPage && !isAdminPage && !isRedirectPage && <Navbar />}
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/blog" element={
-            <PageGuard pageId="blog">
-              <Blog />
-            </PageGuard>
-          } />
-          <Route path="/blog/:id" element={
-            <PageGuard pageId="blog">
-              <BlogPost />
-            </PageGuard>
-          } />
-          <Route path="/chronicles" element={
-            <PageGuard pageId="chronicles">
-              <Chronicles />
-            </PageGuard>
-          } />
-          <Route path="/showcase" element={
-            <PageGuard pageId="utilities">
-              <Showcase />
-            </PageGuard>
-          } />
-          <Route path="/showcase/:id" element={
-            <PageGuard pageId="utilities">
-              <ProjectDetail />
-            </PageGuard>
-          } />
+        <React.Suspense fallback={<div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Loading...</div>}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/blog" element={
+              <PageGuard pageId="blog">
+                <Blog />
+              </PageGuard>
+            } />
+            <Route path="/blog/:id" element={
+              <PageGuard pageId="blog">
+                <BlogPost />
+              </PageGuard>
+            } />
+            <Route path="/chronicles" element={
+              <PageGuard pageId="chronicles">
+                <Chronicles />
+              </PageGuard>
+            } />
+            <Route path="/showcase" element={
+              <PageGuard pageId="utilities">
+                <Showcase />
+              </PageGuard>
+            } />
+            <Route path="/showcase/:id" element={
+              <PageGuard pageId="utilities">
+                <ProjectDetail />
+              </PageGuard>
+            } />
 
-          <Route path="/admin" element={isAdmin ? <AdminDashboard /> : <Login />} />
-          <Route path="/admin/cms/:id" element={isAdmin ? <BlogCMS /> : <Login />} />
-          <Route path="/shortener" element={<LinkShortener />} />
-          <Route path="/quiz-maker" element={(currentUser || isAdmin) ? <QuizMaker /> : <Login />} />
-          <Route path="/quiz/:slug" element={<QuizPlayer />} />
-          <Route path="/:slug" element={<ShortLinkRedirect />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            <Route path="/admin" element={isAdmin ? <AdminDashboard /> : <Login />} />
+            <Route path="/admin/cms/:id" element={isAdmin ? <BlogCMS /> : <Login />} />
+            <Route path="/shortener" element={<LinkShortener />} />
+            <Route path="/quiz-maker" element={(currentUser || isAdmin) ? <QuizMaker /> : <Login />} />
+            <Route path="/quiz/:slug" element={<QuizPlayer />} />
+            <Route path="/:slug" element={<ShortLinkRedirect />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </React.Suspense>
         {!isLoginPage && !isAdminPage && !isRedirectPage && <Footer technicalFont={isShortenerPage} />}
       </div>
     </>
