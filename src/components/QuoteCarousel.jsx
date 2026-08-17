@@ -4,9 +4,9 @@ import { useConfig } from '../context/ConfigContext';
 
 const QuoteCarousel = () => {
   const { config } = useConfig();
-  const quotes = config?.content?.quotes || [
-    "Không có gì quý hơn độc lập, tự do. - Hồ Chí Minh"
-  ];
+  const quotes = (config?.content?.quotes && config.content.quotes.length > 0)
+    ? config.content.quotes
+    : ["Không có gì quý hơn độc lập, tự do. - Hồ Chí Minh"];
   const [index, setIndex] = useState(0);
 
   useEffect(() => {

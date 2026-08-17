@@ -43,30 +43,61 @@ const getDeviceInfo = () => {
     }
 };
 
-// Asynchronously fetch and cache IP & Geolocation with 1.5s timeout
+// Asynchronously fetch and cache IP & Geolocation with multi-provider fallback
 const getGeoLocationInfo = async () => {
     try {
         const cached = sessionStorage.getItem('bct_geo_info');
         if (cached) {
-            return JSON.parse(cached);
+            const parsed = JSON.parse(cached);
+            if (parsed.ip) return parsed;
         }
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1500);
+        // 1. Try FreeIPApi with 2s timeout
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000);
+            const res = await fetch('https://freeipapi.com/api/json/', { signal: controller.signal });
+            clearTimeout(timeoutId);
 
-        const res = await fetch('https://freeipapi.com/api/json/', { signal: controller.signal });
-        clearTimeout(timeoutId);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.ipAddress) {
+                    const geoData = {
+                        ip: data.ipAddress || '',
+                        city: data.cityName || '',
+                        country: data.countryName || '',
+                        countryCode: data.countryCode || ''
+                    };
+                    sessionStorage.setItem('bct_geo_info', JSON.stringify(geoData));
+                    return geoData;
+                }
+            }
+        } catch {
+            // Fallback to provider 2
+        }
 
-        if (res.ok) {
-            const data = await res.json();
-            const geoData = {
-                ip: data.ipAddress || '',
-                city: data.cityName || '',
-                country: data.countryName || '',
-                countryCode: data.countryCode || ''
-            };
-            sessionStorage.setItem('bct_geo_info', JSON.stringify(geoData));
-            return geoData;
+        // 2. Fallback to ipify for guaranteed IP retrieval
+        try {
+            const controller2 = new AbortController();
+            const timeoutId2 = setTimeout(() => controller2.abort(), 2000);
+            const res2 = await fetch('https://api64.ipify.org?format=json', { signal: controller2.signal });
+            clearTimeout(timeoutId2);
+
+            if (res2.ok) {
+                const data2 = await res2.json();
+                if (data2.ip) {
+                    const geoData = {
+                        ip: data2.ip,
+                        city: '',
+                        country: '',
+                        countryCode: ''
+                    };
+                    sessionStorage.setItem('bct_geo_info', JSON.stringify(geoData));
+                    return geoData;
+                }
+            }
+        } catch {
+            // Silently fallback
         }
     } catch {
         // Fallback gracefully without throwing

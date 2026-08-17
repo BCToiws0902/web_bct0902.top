@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 
 import { db } from '../../firebase';
-import { doc, setDoc, collection, getDocs, deleteDoc, query, orderBy, limit } from 'firebase/firestore';
+import { doc, setDoc, collection, getDocs, deleteDoc, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 import { useConfig } from '../../context/ConfigContext';
 import SocialIcon from '../../components/SocialIcon';
@@ -68,8 +68,7 @@ const AdminDashboard = () => {
 
   // Analytics state
   const [analyticsData, setAnalyticsData] = useState([]);
-  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
-  const [analyticsFilter, setAnalyticsFilter] = useState('all'); // 'all' | 'guest' | 'admin'
+  const [analyticsFilter, setAnalyticsFilter] = useState('all'); // 'all' | 'desktop' | 'mobile'
   const [trafficPage, setTrafficPage] = useState(1);
   const TRAFFIC_PER_PAGE = 20;
 
@@ -103,9 +102,25 @@ const AdminDashboard = () => {
   // Fetch collections when switching tabs
   useEffect(() => {
     if (activeTab === 'users') fetchUsers();
-    if (activeTab === 'analytics') fetchAnalytics();
     if (activeTab === 'blog') fetchBlogPosts();
     if (activeTab === 'projects') fetchProjects();
+  }, [activeTab]);
+
+  // Realtime Traffic Analytics Stream
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      const q = query(collection(db, 'system_analytics'), orderBy('timestamp', 'desc'), limit(200));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const data = [];
+        snapshot.forEach((d) => {
+          data.push({ id: d.id, ...d.data() });
+        });
+        setAnalyticsData(data);
+      }, (err) => {
+        console.error("Analytics stream error:", err);
+      });
+      return () => unsubscribe();
+    }
   }, [activeTab]);
 
   // Compute analytics grouped by unique visitor
@@ -114,10 +129,12 @@ const AdminDashboard = () => {
     analyticsData.forEach(item => {
       const vid = item.visitorId || (item.isAdmin ? 'admin_session' : `guest_${item.userAgent?.slice(0, 25)}`);
       if (!map[vid]) {
+        const isMobile = Boolean(item.isMobile || /Android|iPhone|iPad/i.test(item.userAgent || '') || /Mobile|iPhone|Android|iPad/i.test(item.deviceLabel || ''));
         map[vid] = {
           visitorId: vid,
           isAdmin: Boolean(item.isAdmin),
-          deviceLabel: item.deviceLabel || (/Android|iPhone/i.test(item.userAgent) ? 'Mobile' : 'Desktop · Browser'),
+          isMobile,
+          deviceLabel: item.deviceLabel || (isMobile ? 'Mobile · Browser' : 'Desktop · Browser'),
           ip: item.ip || '',
           city: item.city || '',
           country: item.country || '',
@@ -149,8 +166,8 @@ const AdminDashboard = () => {
   }, [analyticsData]);
 
   const filteredVisitors = useMemo(() => {
-    if (analyticsFilter === 'guest') return groupedVisitors.filter(v => !v.isAdmin);
-    if (analyticsFilter === 'admin') return groupedVisitors.filter(v => v.isAdmin);
+    if (analyticsFilter === 'desktop') return groupedVisitors.filter(v => !v.isMobile);
+    if (analyticsFilter === 'mobile') return groupedVisitors.filter(v => v.isMobile);
     return groupedVisitors;
   }, [groupedVisitors, analyticsFilter]);
 
@@ -164,23 +181,6 @@ const AdminDashboard = () => {
       setUsersList(users);
     } catch (err) {
       console.error(err);
-    }
-  };
-
-  const fetchAnalytics = async () => {
-    setLoadingAnalytics(true);
-    try {
-      const q = query(collection(db, 'system_analytics'), orderBy('timestamp', 'desc'), limit(150));
-      const querySnapshot = await getDocs(q);
-      const data = [];
-      querySnapshot.forEach((doc) => {
-        data.push({ id: doc.id, ...doc.data() });
-      });
-      setAnalyticsData(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingAnalytics(false);
     }
   };
 
@@ -299,11 +299,54 @@ const AdminDashboard = () => {
     setTimeout(() => setStatus(''), 3000);
   };
 
+  const computeConfigDiff = (original, current) => {
+    if (!original) return current;
+    const diff = {};
+
+    if (JSON.stringify(original.appearance || {}) !== JSON.stringify(current.appearance || {})) {
+      diff.appearance = current.appearance || {};
+    }
+    if (JSON.stringify(original.social_links || []) !== JSON.stringify(current.social_links || [])) {
+      diff.social_links = current.social_links || [];
+    }
+    if (JSON.stringify(original.maintenance || {}) !== JSON.stringify(current.maintenance || {})) {
+      diff.maintenance = current.maintenance || {};
+    }
+    if (JSON.stringify(original.apps || []) !== JSON.stringify(current.apps || [])) {
+      diff.apps = current.apps || [];
+    }
+    if (JSON.stringify(original.content?.quotes || []) !== JSON.stringify(current.content?.quotes || []) ||
+        original.content?.filmStripSpeed !== current.content?.filmStripSpeed) {
+      diff.content = {
+        quotes: current.content?.quotes || [],
+        filmStripSpeed: current.content?.filmStripSpeed || 45
+      };
+    }
+    return diff;
+  };
+
   const handleSave = async () => {
     if (!localConfig) return;
+    const diffPayload = computeConfigDiff(config, localConfig);
+    const filmStripChanged = JSON.stringify(config?.content?.filmStripImages || []) !== JSON.stringify(localConfig.content?.filmStripImages || []);
+
+    if (Object.keys(diffPayload).length === 0 && !filmStripChanged) {
+      showToast('Không có thay đổi nào cần lưu.');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      await setDoc(doc(db, 'site_config', 'main_config'), localConfig, { merge: true });
+      const promises = [];
+      if (Object.keys(diffPayload).length > 0) {
+        promises.push(setDoc(doc(db, 'site_config', 'main_config'), diffPayload, { merge: true }));
+      }
+      if (filmStripChanged) {
+        promises.push(setDoc(doc(db, 'system', 'memories'), {
+          filmStripImages: localConfig.content?.filmStripImages || []
+        }, { merge: true }));
+      }
+      await Promise.all(promises);
       showToast('Đã lưu thành công cấu hình!');
     } catch (err) {
       alert('Lỗi khi lưu cấu hình: ' + err.message);
@@ -394,7 +437,7 @@ const AdminDashboard = () => {
     img.onload = () => {
       const canvas = document.createElement('canvas');
       const targetAspect = adjustmentModal.aspect || 16/9;
-      const targetWidth = 1000;
+      const targetWidth = 800;
       const targetHeight = targetWidth / targetAspect;
 
       canvas.width = targetWidth;
@@ -410,7 +453,7 @@ const AdminDashboard = () => {
       ctx.fillRect(0, 0, targetWidth, targetHeight);
       ctx.drawImage(img, drawX, drawY, renderWidth, renderHeight);
 
-      const finalBase64 = canvas.toDataURL('image/jpeg', 0.88);
+      const finalBase64 = canvas.toDataURL('image/jpeg', 0.75);
       if (adjustmentModal.callback) {
         adjustmentModal.callback(finalBase64);
       }
@@ -1181,27 +1224,23 @@ const AdminDashboard = () => {
                 {/* Metric Summary Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
                   <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>TỔNG SỐ LƯỢT TRUY CẬP</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>LƯỢT TRUY CẬP GẦN ĐÂY</div>
                     <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--apple-text-primary)', letterSpacing: '-0.03em' }}>{analyticsData.length}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Bản ghi lưu lượng hệ thống</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Sự kiện theo dõi trực tiếp</div>
                   </div>
 
                   <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>SỐ NGƯỜI DÙNG DUY NHẤT</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>THIẾT BỊ DUY NHẤT</div>
                     <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--apple-blue)', letterSpacing: '-0.03em' }}>{groupedVisitors.length}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Gom nhóm theo thiết bị/phiên</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Gom nhóm theo người dùng/phiên</div>
                   </div>
 
                   <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>TỶ LỆ MOBILE / TABLET</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>TỶ LỆ DI ĐỘNG</div>
                     <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#f59e0b', letterSpacing: '-0.03em' }}>
-                      {(() => {
-                        let mob = 0;
-                        analyticsData.forEach(d => { if(d.isMobile || /Android|iPhone/i.test(d.userAgent)) mob++; });
-                        return analyticsData.length ? `${Math.round((mob/analyticsData.length)*100)}%` : '0%';
-                      })()}
+                      {groupedVisitors.length ? `${Math.round((groupedVisitors.filter(v => v.isMobile).length / groupedVisitors.length) * 100)}%` : '0%'}
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Truy cập từ thiết bị di động</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Tỷ lệ người dùng Mobile/Tablet</div>
                   </div>
                 </div>
 
@@ -1210,10 +1249,10 @@ const AdminDashboard = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                     <div>
                       <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
-                        <Activity size={18} /> NHẬT KÝ LƯU LƯỢNG TRUY CẬP
+                        <Activity size={18} /> NHẬT KÝ LƯU LƯỢNG TRUY CẬP REALTIME
                       </div>
                       <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
-                        Mỗi thẻ đại diện cho 1 người/thiết bị riêng biệt.
+                        Tự động cập nhật thời gian thực khi có người dùng truy cập.
                       </p>
                     </div>
 
@@ -1226,22 +1265,18 @@ const AdminDashboard = () => {
                           Tất cả ({groupedVisitors.length})
                         </button>
                         <button 
-                          className={`filter-pill ${analyticsFilter === 'guest' ? 'active' : ''}`}
-                          onClick={() => { setAnalyticsFilter('guest'); setTrafficPage(1); }}
+                          className={`filter-pill ${analyticsFilter === 'desktop' ? 'active' : ''}`}
+                          onClick={() => { setAnalyticsFilter('desktop'); setTrafficPage(1); }}
                         >
-                          Khách ({groupedVisitors.filter(v => !v.isAdmin).length})
+                          Desktop 💻 ({groupedVisitors.filter(v => !v.isMobile).length})
                         </button>
                         <button 
-                          className={`filter-pill ${analyticsFilter === 'admin' ? 'active' : ''}`}
-                          onClick={() => { setAnalyticsFilter('admin'); setTrafficPage(1); }}
+                          className={`filter-pill ${analyticsFilter === 'mobile' ? 'active' : ''}`}
+                          onClick={() => { setAnalyticsFilter('mobile'); setTrafficPage(1); }}
                         >
-                          Admin ({groupedVisitors.filter(v => v.isAdmin).length})
+                          Mobile 📱 ({groupedVisitors.filter(v => v.isMobile).length})
                         </button>
                       </div>
-
-                      <button className="btn-ghost" onClick={fetchAnalytics} disabled={loadingAnalytics}>
-                        <Activity size={14} className={loadingAnalytics ? "spin" : ""} /> Làm Mới
-                      </button>
                     </div>
                   </div>
 
