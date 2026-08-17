@@ -13,7 +13,8 @@
     "logout": "Logout",
     "blog": "Insights",
     "chronicles": "Chronicles",
-    "shortener": "Shortener"
+    "shortener": "Shortener",
+    "back_home": "BACK TO HOME"
   },
   "hero": {
     "greeting": "HELLO _ // THIS IS",

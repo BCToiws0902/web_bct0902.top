@@ -8,8 +8,10 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import * as OTPAuth from 'otpauth';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const Login = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { loginAsAdminLocal } = useAuth();
   const [error, setError] = useState('');

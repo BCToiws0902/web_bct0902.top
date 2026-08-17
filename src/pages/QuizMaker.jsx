@@ -703,7 +703,7 @@ const QuizMaker = () => {
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="preview-section glass-panel shadow-glow">
             <div className="preview-header">
               <div className="preview-stats">
-                <h2><FileText size={24} className="text-gradient" /> TỔNG QUAN FILE TÀI LIỆU</h2>
+                <h2><FileText size={24} className="text-gradient" /> {fileName ? `FILE: ${fileName}` : 'TỔNG QUAN FILE TÀI LIỆU'}</h2>
                 <div className="stats-row">
                   <span 
                     className={`stat-pill success ${filterMode === 'all' ? 'active' : ''}`} 

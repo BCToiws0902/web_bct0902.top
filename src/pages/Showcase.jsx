@@ -83,7 +83,7 @@ const Showcase = () => {
                 border: '1px solid var(--bg-glass-border)', margin: '0 auto 2rem'
               }}
             >
-              <ArrowLeft size={16} /> QUAY LẠI TRANG CHỦ
+              <ArrowLeft size={16} /> {t('nav.back_home')}
             </button>
             <h1 className="text-gradient" style={{ 
               fontSize: 'clamp(2.5rem, 8vw, 4.5rem)', 

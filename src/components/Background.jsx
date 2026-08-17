@@ -35,9 +35,10 @@ const Background = () => {
           width: '40vw',
           height: '40vw',
           background: 'radial-gradient(circle, var(--accent-main), transparent 70%)',
-          opacity: 0.15,
-          filter: 'blur(80px)',
-          borderRadius: '50%'
+          opacity: 0.12,
+          filter: 'blur(50px)',
+          borderRadius: '50%',
+          willChange: 'transform'
         }}
       />
 
@@ -60,9 +61,10 @@ const Background = () => {
           width: '45vw',
           height: '45vw',
           background: 'radial-gradient(circle, var(--accent-secondary), transparent 70%)',
-          opacity: 0.15,
-          filter: 'blur(100px)',
-          borderRadius: '50%'
+          opacity: 0.12,
+          filter: 'blur(60px)',
+          borderRadius: '50%',
+          willChange: 'transform'
         }}
       />
 
@@ -84,9 +86,10 @@ const Background = () => {
           width: '30vw',
           height: '30vw',
           background: 'radial-gradient(circle, var(--success), transparent 70%)',
-          opacity: 0.1,
-          filter: 'blur(120px)',
-          borderRadius: '50%'
+          opacity: 0.08,
+          filter: 'blur(50px)',
+          borderRadius: '50%',
+          willChange: 'transform'
         }}
       />
     </div>

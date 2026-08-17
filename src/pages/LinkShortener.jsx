@@ -456,10 +456,10 @@ const LinkShortener = () => {
                         </div>
 
                         <div className="link-actions">
-                          <button onClick={() => startEdit(link)} className="action-icon edit" title="Sửa"><Edit3 size={16} /></button>
-                          <button onClick={() => handleDelete(link.slug)} className="action-icon delete" title="Xóa"><Trash2 size={16} /></button>
-                          <button onClick={() => setQrModalLink(link)} className="action-icon qr" title="Xem QR"><QrCode size={16} /></button>
-                          <button onClick={() => copyToClipboard(`${window.location.origin.replace('www.', '')}/${link.slug}`)} className="action-icon copy" title="Sao chép"><Copy size={16} /></button>
+                          <button onClick={() => startEdit(link)} className="action-icon edit" title="Sửa" aria-label="Edit link"><Edit3 size={16} /></button>
+                          <button onClick={() => handleDelete(link.slug)} className="action-icon delete" title="Xóa" aria-label="Delete link"><Trash2 size={16} /></button>
+                          <button onClick={() => setQrModalLink(link)} className="action-icon qr" title="Xem QR" aria-label="View QR Code"><QrCode size={16} /></button>
+                          <button onClick={() => copyToClipboard(`${window.location.origin.replace('www.', '')}/${link.slug}`)} className="action-icon copy" title="Sao chép" aria-label="Copy short link"><Copy size={16} /></button>
                         </div>
                       </div>
                     </motion.div>
@@ -488,7 +488,7 @@ const LinkShortener = () => {
               onClick={(e) => e.stopPropagation()}
               style={{ width: '100%', maxWidth: '600px' }}
             >
-              <button className="close-popup" onClick={() => setShortUrl('')}><X size={20} /></button>
+              <button className="close-popup" onClick={() => setShortUrl('')} aria-label="Close modal"><X size={20} /></button>
               <h3 style={{ fontFamily: 'var(--font-tech)', marginBottom: '1.5rem', color: 'var(--accent-main)', textAlign: 'center' }}>
                 {t('shortener.result_title')}
               </h3>
@@ -550,7 +550,7 @@ const LinkShortener = () => {
               onClick={(e) => e.stopPropagation()}
               style={{ width: '100%', maxWidth: '500px', padding: '2.5rem' }}
             >
-              <button className="close-popup" onClick={() => setShowPopup(false)}><X size={20} /></button>
+              <button className="close-popup" onClick={() => setShowPopup(false)} aria-label="Close modal"><X size={20} /></button>
               <div className="popup-icon">
                 <Info size={40} className="text-glow" />
               </div>
@@ -627,7 +627,7 @@ const LinkShortener = () => {
               style={{ width: '100%', maxWidth: '400px', padding: '2.5rem', textAlign: 'center' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <button className="close-popup" onClick={() => setQrModalLink(null)}><X size={20} /></button>
+              <button className="close-popup" onClick={() => setQrModalLink(null)} aria-label="Close modal"><X size={20} /></button>
               <h3 style={{ fontFamily: 'var(--font-tech)', marginBottom: '1.5rem', color: 'var(--accent-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                 <QrCode size={24} /> MÃ QR CHI TIẾT
               </h3>

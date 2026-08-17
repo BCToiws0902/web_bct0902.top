@@ -226,6 +226,10 @@
     align-items: center;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
+    max-width: 500px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .stats-row {
