@@ -48,8 +48,6 @@ const Navbar = () => {
     i18n.changeLanguage(newLang);
   };
 
-  const navLinks = ['home'];
-
   const getAvatarFallback = () => {
      if (currentUser?.photoURL) return currentUser.photoURL;
      return `https://api.dicebear.com/7.x/shapes/svg?seed=${currentUser?.email || 'default'}`;

@@ -93,13 +93,16 @@ const QuizPlayer = () => {
         }
     };
 
+    const handleFinishRef = React.useRef();
+    handleFinishRef.current = handleFinish;
+
     useEffect(() => {
         let timer;
         if (gameState === 'playing' && timeLeft > 0) {
             timer = setInterval(() => {
                 setTimeLeft(prev => {
                     if (prev <= 1) {
-                        handleFinish();
+                        handleFinishRef.current?.();
                         return 0;
                     }
                     return prev - 1;

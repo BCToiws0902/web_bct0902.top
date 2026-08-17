@@ -8,7 +8,7 @@ import {
 import { db } from '../firebase';
 import {
   doc, setDoc, getDoc, collection, query, where, getDocs,
-  deleteDoc, updateDoc, orderBy, onSnapshot
+  deleteDoc, updateDoc, onSnapshot
 } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -100,7 +100,7 @@ const LinkShortener = () => {
         return `vn${Math.random().toString(36).substring(2, 6)}`;
       }
       return slug;
-    } catch (err) {
+    } catch {
       return `vn${Math.random().toString(36).substring(2, 6)}`;
     }
   };
@@ -109,7 +109,7 @@ const LinkShortener = () => {
     try {
       new URL(url);
       return true;
-    } catch (_) {
+    } catch {
       return false;
     }
   };
@@ -266,7 +266,7 @@ const LinkShortener = () => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
         alert('Đã sao chép liên kết!');
-      } catch (err) {
+      } catch {
         alert('Trình duyệt không hỗ trợ sao chép tự động.');
       }
       textArea.remove();

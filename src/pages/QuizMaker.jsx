@@ -5,14 +5,12 @@ import mammoth from 'mammoth';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import MobileBottomNav from '../components/MobileBottomNav';
 import './QuizMaker.css';
 
 const QuizMaker = () => {
   const { currentUser, isAdmin } = useAuth();
-  const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
   const [step, setStep] = useState(0); 
@@ -56,14 +54,7 @@ const QuizMaker = () => {
   const [showAdminReview, setShowAdminReview] = useState(false);
   const [selectedResult, setSelectedResult] = useState(null);
 
-  // --- Dashboard Logic ---
-  useEffect(() => {
-    if (currentUser || isAdmin) {
-      fetchUserQuizzes();
-    }
-  }, [currentUser, isAdmin]);
-
-  const fetchUserQuizzes = async () => {
+  const fetchUserQuizzes = React.useCallback(async () => {
     setIsLoadingQuizzes(true);
     try {
       const quizzesRef = collection(db, 'quizzes');
@@ -71,14 +62,13 @@ const QuizMaker = () => {
       if (isAdmin) {
         q = query(quizzesRef);
       } else {
-        q = query(quizzesRef, where('creatorId', '==', currentUser.uid));
+        q = query(quizzesRef, where('creatorId', '==', currentUser?.uid));
       }
-      
       const querySnapshot = await getDocs(q);
-      const fetched = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })).sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds);
+      const fetched = querySnapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       
       setUserQuizzes(fetched);
     } catch (err) {
@@ -87,7 +77,14 @@ const QuizMaker = () => {
     } finally {
       setIsLoadingQuizzes(false);
     }
-  };
+  }, [currentUser, isAdmin]);
+
+  // --- Dashboard Logic ---
+  useEffect(() => {
+    if (currentUser || isAdmin) {
+      fetchUserQuizzes();
+    }
+  }, [currentUser, isAdmin, fetchUserQuizzes]);
 
   const handleViewLeaderboard = async (slug, title) => {
     setLeaderboardLoading(true);
@@ -247,7 +244,7 @@ const QuizMaker = () => {
     }
   }, [showShareModal]);
 
-  const handleResetAttempt = async (quizSlug, userName, participantData) => {
+  const handleResetAttempt = async (quizSlug, userName, _participantData) => {
       if (!window.confirm(`Reset lượt thi cho thí sinh ${userName}?`)) return;
       
       try {
@@ -320,9 +317,9 @@ const QuizMaker = () => {
             };
         } 
         // 2. Match options (A. B. C. D.)
-        else if (/^[A-Z]\s*[\.\)]\s*/i.test(text)) {
+        else if (/^[A-Z]\s*[.)]\s*/i.test(text)) {
             if (currentQuestion) {
-                const optText = text.replace(/^[A-Z]\s*[\.\)]\s*/i, '');
+                const optText = text.replace(/^[A-Z]\s*[.)]\s*/i, '');
                 const optLetter = text.match(/^[A-Z]/i)[0].toUpperCase();
                 currentQuestion.options.push({ letter: optLetter, text: optText });
                 
@@ -335,7 +332,7 @@ const QuizMaker = () => {
             }
         } 
         // 3. Match answer (ANSWER: X) - Specifically for Aiken format
-        else if (format === 'aiken' && /^(ANSWER|ĐÁP ÁN|DAPAN|ĐÁP ÁN ĐÚNG)\s*[:\-]\s*[A-Z]/i.test(text)) {
+        else if (format === 'aiken' && /^(ANSWER|ĐÁP ÁN|DAPAN|ĐÁP ÁN ĐÚNG)\s*[:-]\s*[A-Z]/i.test(text)) {
             if (currentQuestion) {
                 const ansMatch = text.match(/[A-Z]$/i);
                 if (ansMatch) {
@@ -742,7 +739,7 @@ const QuizMaker = () => {
                    if (filterMode === 'invalid') return (!q.correctAnswer || q.options.length < 2);
                    return true;
                 })
-                .map((q, idx) => {
+                .map((q) => {
                 const isValid = q.correctAnswer && q.options.length >= 2;
                 
                 if (editingQuestion && editingQuestion.id === q.id) {
@@ -1052,7 +1049,7 @@ const QuizMaker = () => {
                                        <small style={{ opacity: 0.6, fontSize: '0.7rem' }}>
                                           {Object.entries(res.participantData)
                                             .filter(([k]) => k !== 'userName')
-                                            .map(([k, v]) => `${v}`).join(' | ')}
+                                            .map(([, v]) => `${v}`).join(' | ')}
                                        </small>
                                     )}
                                  </div>

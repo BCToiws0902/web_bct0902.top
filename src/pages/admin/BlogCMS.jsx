@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -48,23 +48,7 @@ const BlogCMS = () => {
   const [statusMsg, setStatusMsg] = useState('');
   const [viewMode, setViewMode] = useState('split'); // 'split' | 'editor' | 'preview'
 
-  useEffect(() => {
-    if (id !== 'new') {
-      fetchPost();
-    }
-  }, [id]);
-
-  useEffect(() => {
-    if (title && !slug && id === 'new') {
-      const generatedSlug = title.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9\s-]/g, "")
-        .trim().replace(/\s+/g, "-");
-      setSlug(generatedSlug);
-    }
-  }, [title]);
-
-  const fetchPost = async () => {
+  const fetchPost = useCallback(async () => {
     try {
       const docSnap = await getDoc(doc(db, 'blog_posts', id));
       if (docSnap.exists()) {
@@ -81,11 +65,27 @@ const BlogCMS = () => {
         navigate('/admin');
       }
     } catch (err) {
-      alert('Lỗi truy xuất hệ thống: ' + err.message);
+      alert('Lỗi tải bài viết: ' + err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate]);
+
+  useEffect(() => {
+    if (id !== 'new') {
+      fetchPost();
+    }
+  }, [id, fetchPost]);
+
+  useEffect(() => {
+    if (title && !slug && id === 'new') {
+      const generatedSlug = title.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9\s-]/g, "")
+        .trim().replace(/\s+/g, "-");
+      setSlug(generatedSlug);
+    }
+  }, [title, slug, id]);
 
   const showStatus = (msg) => {
     setStatusMsg(msg);
@@ -393,7 +393,7 @@ const BlogCMS = () => {
                      <ReactMarkdown
                        remarkPlugins={[remarkGfm]}
                        components={{
-                         code({node, inline, className, children, ...props}) {
+                         code({_node, inline, className, children, ...props}) {
                            const match = /language-(\w+)/.exec(className || '');
                            return !inline && match ? (
                              <SyntaxHighlighter style={vscDarkPlus} language={match[1]} PreTag="div" {...props}>

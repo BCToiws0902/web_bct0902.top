@@ -55,7 +55,7 @@ function AppRoutes() {
     trackEvent('PAGE_VIEW', {
       title: document.title || 'BCT Project'
     });
-  }, [location.pathname]);
+  }, [location.pathname, trackEvent]);
 
   React.useEffect(() => {
     if (location.hash && location.pathname === '/') {
@@ -110,21 +110,33 @@ function AppRoutes() {
               </PageGuard>
             } />
             <Route path="/showcase" element={
-              <PageGuard pageId="utilities">
+              <PageGuard pageId="showcase">
                 <Showcase />
               </PageGuard>
             } />
             <Route path="/showcase/:id" element={
-              <PageGuard pageId="utilities">
+              <PageGuard pageId="showcase">
                 <ProjectDetail />
               </PageGuard>
             } />
 
             <Route path="/admin" element={isAdmin ? <AdminDashboard /> : <Login />} />
             <Route path="/admin/cms/:id" element={isAdmin ? <BlogCMS /> : <Login />} />
-            <Route path="/shortener" element={<LinkShortener />} />
-            <Route path="/quiz-maker" element={(currentUser || isAdmin) ? <QuizMaker /> : <Login />} />
-            <Route path="/quiz/:slug" element={<QuizPlayer />} />
+            <Route path="/shortener" element={
+              <PageGuard pageId="shortener">
+                <LinkShortener />
+              </PageGuard>
+            } />
+            <Route path="/quiz-maker" element={
+              <PageGuard pageId="quiz">
+                {(currentUser || isAdmin) ? <QuizMaker /> : <Login />}
+              </PageGuard>
+            } />
+            <Route path="/quiz/:slug" element={
+              <PageGuard pageId="quiz">
+                <QuizPlayer />
+              </PageGuard>
+            } />
             <Route path="/:slug" element={<ShortLinkRedirect />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

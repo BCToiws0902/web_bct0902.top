@@ -56,12 +56,10 @@ const ProjectDetail = () => {
         downloadCount: increment(1)
       });
 
-      let finalUrl = project.downloadUrl;
-      if (finalUrl.includes('1drv.ms')) {
-
+      const finalUrl = project.downloadUrl;
+      if (finalUrl) {
+        window.open(finalUrl, '_blank');
       }
-
-      window.open(finalUrl, '_blank');
 
       setProject(prev => ({ ...prev, downloadCount: (prev.downloadCount || 0) + 1 }));
     } catch (err) {

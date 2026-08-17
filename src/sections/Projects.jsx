@@ -42,7 +42,7 @@ const Projects = () => {
       </motion.h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4rem' }}>
-        {projects.map((project, idx) => (
+        {projects.map((project) => (
           <motion.div
             key={project.id}
             initial={{ opacity: 0, y: 50 }}

@@ -1,12 +1,13 @@
 import React, { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
 
+const FOOD_EMOJIS = ['🍅', '🍳', '🥩', '🥦', '🍕', '🥗', '🥢', '🍷', '🥖', '🥕', '🥔'];
+
 const FoodItem = memo(({ delay }) => {
   const randomXInit = useMemo(() => Math.random() * 100, []);
   const randomDuration = useMemo(() => 10 + Math.random() * 20, []);
   const randomScale = useMemo(() => 0.8 + Math.random() * 1.5, []);
-  const foodEmojis = ['🍅', '🍳', '🥩', '🥦', '🍕', '🥗', '🥢', '🍷', '🥖', '🥕', '🥔'];
-  const food = useMemo(() => foodEmojis[Math.floor(Math.random() * foodEmojis.length)], []);
+  const food = useMemo(() => FOOD_EMOJIS[Math.floor(Math.random() * FOOD_EMOJIS.length)], []);
 
   return (
     <motion.div

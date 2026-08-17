@@ -7,7 +7,6 @@ import MobileBottomNav from '../components/MobileBottomNav';
 import './PersonalChronicles.css';
 
 const Milestone = ({ milestone, index, isLast, image }) => {
-  const { t } = useTranslation();
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({
     target: ref,

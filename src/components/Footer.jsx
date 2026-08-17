@@ -71,8 +71,6 @@ const Footer = ({ technicalFont }) => {
     }
 
     setStatus('sending');
-    let firestoreSuccess = false;
-    let emailSuccess = false;
 
     const firestorePromise = (async () => {
       try {
