@@ -43,12 +43,44 @@ const getDeviceInfo = () => {
     }
 };
 
+// Asynchronously fetch and cache IP & Geolocation with 1.5s timeout
+const getGeoLocationInfo = async () => {
+    try {
+        const cached = sessionStorage.getItem('bct_geo_info');
+        if (cached) {
+            return JSON.parse(cached);
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
+
+        const res = await fetch('https://freeipapi.com/api/json/', { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+            const data = await res.json();
+            const geoData = {
+                ip: data.ipAddress || '',
+                city: data.cityName || '',
+                country: data.countryName || '',
+                countryCode: data.countryCode || ''
+            };
+            sessionStorage.setItem('bct_geo_info', JSON.stringify(geoData));
+            return geoData;
+        }
+    } catch {
+        // Fallback gracefully without throwing
+    }
+    return { ip: '', city: '', country: '', countryCode: '' };
+};
+
 export const useAnalytics = () => {
     const trackEvent = async (eventName, params = {}) => {
         try {
             const visitorId = getOrCreateVisitorId();
             const isAdmin = localStorage.getItem('bct_admin_session') === 'true';
             const { isMobile, deviceLabel } = getDeviceInfo();
+            const geoInfo = await getGeoLocationInfo();
 
             await addDoc(collection(db, 'system_analytics'), {
                 event: eventName,
@@ -56,6 +88,10 @@ export const useAnalytics = () => {
                 isAdmin,
                 deviceLabel,
                 isMobile,
+                ip: geoInfo.ip || '',
+                city: geoInfo.city || '',
+                country: geoInfo.country || '',
+                countryCode: geoInfo.countryCode || '',
                 ...params,
                 path: window.location.pathname,
                 timestamp: serverTimestamp(),

@@ -144,12 +144,21 @@ const AdminDashboard = () => {
           visitorId: vid,
           isAdmin: Boolean(item.isAdmin),
           deviceLabel: item.deviceLabel || (/Android|iPhone/i.test(item.userAgent) ? 'Mobile' : 'Desktop · Browser'),
+          ip: item.ip || '',
+          city: item.city || '',
+          country: item.country || '',
+          countryCode: item.countryCode || '',
           totalHits: 0,
           paths: new Set(),
           lastTimestamp: item.timestamp,
           events: []
         };
       }
+      if (item.ip && !map[vid].ip) map[vid].ip = item.ip;
+      if (item.city && !map[vid].city) map[vid].city = item.city;
+      if (item.country && !map[vid].country) map[vid].country = item.country;
+      if (item.countryCode && !map[vid].countryCode) map[vid].countryCode = item.countryCode;
+
       map[vid].totalHits += 1;
       if (item.path) map[vid].paths.add(item.path);
       map[vid].events.push(item);
@@ -690,10 +699,6 @@ const AdminDashboard = () => {
           </div>
           
           <div className="admin-header-actions">
-            <div className="header-status-pill">
-              <span className="header-status-dot"></span>
-              <span>Firestore Live</span>
-            </div>
             <a href="/" target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ textDecoration: 'none' }}>
               <ExternalLink size={16} />
               <span>Xem Web</span>
@@ -741,69 +746,119 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="admin-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                    <div className="config-section-title" style={{ margin: 0 }}>
-                      <Globe size={18} /> QUẢN LÝ MẠNG XÃ HỘI
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                      <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
+                        <Globe size={18} /> QUẢN LÝ MẠNG XÃ HỘI ({(localConfig.social_links || []).length})
+                      </div>
+                      <p style={{ margin: 0, color: 'var(--admin-text-muted)', fontSize: '0.85rem' }}>
+                        Chọn logo có sẵn hoặc tải ảnh logo riêng, sau đó nhập liên kết URL.
+                      </p>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.6rem' }}>
-                      <button className="add-btn" onClick={() => {
-                          const newSocials = [...(localConfig.social_links || [])];
-                          newSocials.push({ name: 'Mới', icon: 'Globe', url: '', color: '#0084FF', isVisible: true });
-                          setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                      }}>
-                          <Plus size={16} /> THÊM MXH
-                      </button>
-                    </div>
+                    <button className="add-btn" onClick={() => {
+                      const newSocials = [...(localConfig.social_links || [])];
+                      newSocials.push({ icon: 'Globe', url: '', customIcon: '' });
+                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                    }}>
+                      <Plus size={16} /> Thêm Mạng Xã Hội
+                    </button>
                   </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {(localConfig.social_links || []).map((social, idx) => (
-                    <div key={idx} className="social-manage-row">
-                      <input type="text" className="admin-input" placeholder="Tên" value={social.name} onChange={(e) => {
-                        const newSocials = [...localConfig.social_links];
-                        newSocials[idx].name = e.target.value;
-                        setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                      }} />
-
-                      <input type="text" className="admin-input" placeholder="Link URL" value={social.url} onChange={(e) => {
-                        const newSocials = [...localConfig.social_links];
-                        newSocials[idx].url = e.target.value;
-                        setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                      }} />
-
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                        <div className="social-color-picker" style={{ background: social.color || '#555' }}>
-                          <input type="color" value={social.color || '#555555'} onChange={(e) => {
-                            const newSocials = [...localConfig.social_links];
-                            newSocials[idx].color = e.target.value;
-                            setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                          }} />
-                        </div>
-                        
-                        <div className="social-icon-library-wrapper">
-                          <button 
-                            className="btn-ghost"
-                            style={{ padding: '0.5rem', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {(localConfig.social_links || []).map((social, idx) => (
+                      <div key={idx} className="social-compact-row">
+                        {/* Logo Trigger & Popover */}
+                        <div style={{ position: 'relative' }}>
+                          <button
+                            type="button"
+                            className="social-logo-trigger"
                             onClick={() => setActiveIconPickerIdx(activeIconPickerIdx === idx ? null : idx)}
+                            title="Bấm để đổi Logo / Icon"
                           >
-                            {social.icon ? <SocialIcon name={social.icon} size={18} color="#fff" /> : <ImageIcon size={18} />}
+                            {social.customIcon ? (
+                              <img src={social.customIcon} alt="social-logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            ) : social.icon ? (
+                              <SocialIcon name={social.icon} size={22} color="#fff" />
+                            ) : (
+                              <Globe size={22} color="#fff" />
+                            )}
                           </button>
-                        </div>
-                      </div>
 
-                      <div className="action-btns">
-                        <button onClick={() => {
-                          const newSocials = [...(localConfig.social_links || [])];
-                          newSocials.splice(idx, 1);
-                          setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                        }} className="delete-btn" aria-label={`Xóa ${social.name}`}>
+                          {activeIconPickerIdx === idx && (
+                            <div className="social-picker-dropdown">
+                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--admin-text-secondary)', marginBottom: '0.6rem' }}>
+                                CHỌN LOGO THÔNG DỤNG
+                              </div>
+                              <div className="social-picker-grid">
+                                {SOCIAL_PLATFORMS.map((platform) => (
+                                  <button
+                                    key={platform.name}
+                                    type="button"
+                                    className="social-preset-btn"
+                                    onClick={() => {
+                                      const newSocials = [...localConfig.social_links];
+                                      newSocials[idx] = { ...newSocials[idx], icon: platform.icon, customIcon: '' };
+                                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                                      setActiveIconPickerIdx(null);
+                                    }}
+                                  >
+                                    <SocialIcon name={platform.icon} size={18} color={platform.color || '#fff'} />
+                                    <span>{platform.name}</span>
+                                  </button>
+                                ))}
+                              </div>
+
+                              <div style={{ borderTop: '1px solid var(--admin-border)', paddingTop: '0.65rem', marginTop: '0.5rem' }}>
+                                <label className="btn-ghost" style={{ width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.5rem' }}>
+                                  <Upload size={14} />
+                                  <span>Tải Logo Riêng Từ Máy</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
+                                    onChange={(e) => handleFileUpload(e, (res) => {
+                                      const newSocials = [...localConfig.social_links];
+                                      newSocials[idx] = { ...newSocials[idx], customIcon: res, icon: '' };
+                                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                                      setActiveIconPickerIdx(null);
+                                    }, 1)}
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* URL Input */}
+                        <input
+                          type="url"
+                          className="admin-input"
+                          placeholder="https://..."
+                          value={social.url || ''}
+                          style={{ flex: 1 }}
+                          onChange={(e) => {
+                            const newSocials = [...localConfig.social_links];
+                            newSocials[idx] = { ...newSocials[idx], url: e.target.value };
+                            setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                          }}
+                        />
+
+                        {/* Delete Button */}
+                        <button
+                          type="button"
+                          className="delete-btn"
+                          onClick={() => {
+                            const newSocials = (localConfig.social_links || []).filter((_, i) => i !== idx);
+                            setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                          }}
+                          aria-label="Xóa mạng xã hội"
+                        >
                           <Trash2 size={16} />
                         </button>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
             </motion.div>
           )}
 
@@ -901,72 +956,115 @@ const AdminDashboard = () => {
             {activeTab === 'apps' && (
               <motion.div key="apps" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="config-section">
                 <div className="admin-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                    <div className="config-section-title" style={{ margin: 0 }}>
-                      <Box size={18} /> HỆ SINH THÁI ỨNG DỤNG
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                      <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
+                        <Box size={18} /> HỆ SINH THÁI ỨNG DỤNG ({(localConfig.apps || []).length})
+                      </div>
+                      <p style={{ margin: 0, color: 'var(--admin-text-muted)', fontSize: '0.85rem' }}>
+                        Các phần mềm và công cụ tin dùng hiển thị trên trang chủ.
+                      </p>
                     </div>
                     <button className="add-btn" onClick={() => {
                        const newApps = [...(localConfig.apps || [])];
-                       newApps.push({ name: 'App Mới', color: '#ffffff', iconUrl: '' });
+                       newApps.push({ name: '', color: '#5e6ad2', iconUrl: '' });
                        setLocalConfig(prev => ({ ...prev, apps: newApps }));
                     }}>
-                      <Plus size={16} /> THÊM ỨNG DỤNG
+                      <Plus size={16} /> Thêm Ứng Dụng
                     </button>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     {(localConfig.apps || []).map((app, idx) => (
-                      <div key={idx} className="social-manage-row" style={{ gridTemplateColumns: '1fr 180px 100px 40px' }}>
-                        <input type="text" className="admin-input" placeholder="Tên App" value={app.name} onChange={(e) => {
-                          const newApps = [...localConfig.apps];
-                          newApps[idx].name = e.target.value;
-                          setLocalConfig(prev => ({ ...prev, apps: newApps }));
-                        }} />
-                        
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                           <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                              <img src={app.iconUrl || '/placeholder.png'} alt="app-icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                           </div>
-                           <div style={{ display: 'flex', gap: '0.4rem' }}>
-                              <label className="btn-ghost" style={{ cursor: 'pointer', padding: '0.5rem' }}>
-                                 <Upload size={16} />
-                                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, (res) => {
-                                    const newApps = [...localConfig.apps];
-                                    newApps[idx].iconUrl = res;
-                                    setLocalConfig(prev => ({ ...prev, apps: newApps }));
-                                 }, 1)} />
-                              </label>
-                              {app.iconUrl && (
-                                <button className="btn-ghost" style={{ padding: '0.5rem' }} onClick={() => handleReAdjust(app.iconUrl, (res) => {
-                                   const newApps = [...localConfig.apps];
-                                   newApps[idx].iconUrl = res;
-                                   setLocalConfig(prev => ({ ...prev, apps: newApps }));
-                                }, 1)}>
-                                   <Crop size={16} />
-                                </button>
-                              )}
-                           </div>
+                      <div key={idx} className="app-compact-row">
+                        {/* App Icon Box with Upload & Crop */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <div className="app-icon-preview">
+                            {app.iconUrl ? (
+                              <img 
+                                src={app.iconUrl} 
+                                alt={app.name || 'App icon'} 
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }} 
+                              />
+                            ) : (
+                              <Box size={20} style={{ color: app.color || 'var(--admin-accent)' }} />
+                            )}
+                          </div>
+
+                          <label className="btn-ghost" style={{ cursor: 'pointer', padding: '0.45rem', width: '36px', height: '36px', minHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Tải icon lên">
+                            <Upload size={14} />
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              style={{ display: 'none' }} 
+                              onChange={(e) => handleFileUpload(e, (res) => {
+                                const newApps = [...(localConfig.apps || [])];
+                                newApps[idx] = { ...newApps[idx], iconUrl: res };
+                                setLocalConfig(prev => ({ ...prev, apps: newApps }));
+                              }, 1)} 
+                            />
+                          </label>
+
+                          {app.iconUrl && (
+                            <button 
+                              type="button"
+                              className="btn-ghost" 
+                              style={{ padding: '0.45rem', width: '36px', height: '36px', minHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+                              onClick={() => handleReAdjust(app.iconUrl, (res) => {
+                                const newApps = [...(localConfig.apps || [])];
+                                newApps[idx] = { ...newApps[idx], iconUrl: res };
+                                setLocalConfig(prev => ({ ...prev, apps: newApps }));
+                              }, 1)}
+                              title="Căn chỉnh icon"
+                            >
+                              <Crop size={14} />
+                            </button>
+                          )}
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                          <div className="social-color-picker" style={{ background: app.color }}>
-                            <input type="color" value={app.color} onChange={(e) => {
-                              const newApps = [...localConfig.apps];
-                              newApps[idx].color = e.target.value;
-                              setLocalConfig(prev => ({ ...prev, apps: newApps }));
-                            }} />
+                        {/* App Name Input */}
+                        <input 
+                          type="text" 
+                          className="admin-input" 
+                          placeholder="Tên ứng dụng (vd: Antigravity, GitHub, VS Code...)" 
+                          value={app.name || ''} 
+                          style={{ flex: 1 }}
+                          onChange={(e) => {
+                            const newApps = [...(localConfig.apps || [])];
+                            newApps[idx] = { ...newApps[idx], name: e.target.value };
+                            setLocalConfig(prev => ({ ...prev, apps: newApps }));
+                          }} 
+                        />
+                        
+                        {/* Brand Color Picker */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <div className="social-color-picker" style={{ background: app.color || '#5e6ad2' }}>
+                            <input 
+                              type="color" 
+                              value={app.color || '#5e6ad2'} 
+                              onChange={(e) => {
+                                const newApps = [...(localConfig.apps || [])];
+                                newApps[idx] = { ...newApps[idx], color: e.target.value };
+                                setLocalConfig(prev => ({ ...prev, apps: newApps }));
+                              }} 
+                              title="Chọn màu nhận diện"
+                            />
                           </div>
-                          <code style={{ fontSize: '0.7rem', color: 'var(--admin-text-muted)' }}>{app.color}</code>
+                          <code style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>{app.color || '#5e6ad2'}</code>
                         </div>
                         
-                        <div className="action-btns">
-                          <button className="delete-btn" onClick={() => {
-                            const newApps = localConfig.apps.filter((_, i) => i !== idx);
+                        {/* Delete Button */}
+                        <button 
+                          type="button"
+                          className="delete-btn" 
+                          onClick={() => {
+                            const newApps = (localConfig.apps || []).filter((_, i) => i !== idx);
                             setLocalConfig(prev => ({ ...prev, apps: newApps }));
-                          }}>
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                          }}
+                          aria-label={`Xóa ứng dụng ${app.name || ''}`}
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -1220,7 +1318,7 @@ const AdminDashboard = () => {
                       {filteredVisitors.map((v, i) => (
                         <div key={v.visitorId || i} className="visitor-row-card">
                           <div className="visitor-header">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
                               {v.isAdmin ? (
                                 <span className="visitor-badge-admin">👑 CHÍNH BẠN (ADMIN)</span>
                               ) : (
@@ -1229,6 +1327,16 @@ const AdminDashboard = () => {
                               <span style={{ fontSize: '0.85rem', color: 'var(--admin-text-muted)' }}>
                                 {v.deviceLabel}
                               </span>
+                              {(v.city || v.country) && (
+                                <span style={{ fontSize: '0.8rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.08)', padding: '2px 8px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  📍 {[v.city, v.country].filter(Boolean).join(', ')} {v.countryCode === 'VN' ? '🇻🇳' : ''}
+                                </span>
+                              )}
+                              {v.ip && (
+                                <code style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', background: 'rgba(255,255,255,0.03)', padding: '2px 6px', borderRadius: '4px' }}>
+                                  🌐 {v.ip}
+                                </code>
+                              )}
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
