@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Settings, 
@@ -37,7 +37,8 @@ import {
   Clock,
   Package,
   Download,
-  ExternalLink as LinkIcon
+  ExternalLink as LinkIcon,
+  Menu
 } from 'lucide-react';
 
 import { db } from '../../firebase';
@@ -45,7 +46,6 @@ import { doc, setDoc, updateDoc, collection, getDocs, deleteDoc, query, orderBy,
 import { Link } from 'react-router-dom';
 import { useConfig } from '../../context/ConfigContext';
 import SocialIcon from '../../components/SocialIcon';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import './AdminDashboard.css';
 
 const SOCIAL_PLATFORMS = [
@@ -66,6 +66,7 @@ const SOCIAL_PLATFORMS = [
 const AdminDashboard = () => {
   const { config, loading } = useConfig();
   const [activeTab, setActiveTab] = useState('general');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [localConfig, setLocalConfig] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState('');
@@ -81,6 +82,8 @@ const AdminDashboard = () => {
 
   const [analyticsData, setAnalyticsData] = useState([]);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [analyticsFilter, setAnalyticsFilter] = useState('all'); // 'all' | 'guest' | 'admin'
+  const [analyticsViewMode, setAnalyticsViewMode] = useState('grouped'); // 'grouped' | 'raw'
 
   const [apiTestStatus, setApiTestStatus] = useState({ gemini: '', groq: '', tavily: '' });
   
@@ -100,6 +103,18 @@ const AdminDashboard = () => {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projectModal, setProjectModal] = useState({ isOpen: false, mode: 'add', data: {} });
 
+  // Keyboard shortcut: Ctrl+S / Cmd+S to Save
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [localConfig]);
+
   useEffect(() => {
     if (config) {
       setLocalConfig(JSON.parse(JSON.stringify(config)));
@@ -118,10 +133,47 @@ const AdminDashboard = () => {
     }
   }, [activeTab]);
 
-  const fetchBlogPosts = async () => {
+  // Compute analytics grouped by unique visitor
+  const groupedVisitors = React.useMemo(() => {
+    const map = {};
+    analyticsData.forEach(item => {
+      const vid = item.visitorId || (item.isAdmin ? 'admin_session' : `guest_${item.userAgent?.slice(0, 25)}`);
+      if (!map[vid]) {
+        map[vid] = {
+          visitorId: vid,
+          isAdmin: Boolean(item.isAdmin),
+          deviceLabel: item.deviceLabel || (/Android|iPhone/i.test(item.userAgent) ? 'Mobile' : 'Desktop · Browser'),
+          totalHits: 0,
+          paths: new Set(),
+          lastTimestamp: item.timestamp,
+          events: []
+        };
+      }
+      map[vid].totalHits += 1;
+      if (item.path) map[vid].paths.add(item.path);
+      map[vid].events.push(item);
+      if (item.timestamp && (!map[vid].lastTimestamp || (item.timestamp?.seconds && item.timestamp.seconds > (map[vid].lastTimestamp?.seconds || 0)))) {
+        map[vid].lastTimestamp = item.timestamp;
+      }
+    });
+
+    return Object.values(map).sort((a, b) => {
+      const timeA = a.lastTimestamp?.seconds || 0;
+      const timeB = b.lastTimestamp?.seconds || 0;
+      return timeB - timeA;
+    });
+  }, [analyticsData]);
+
+  const filteredVisitors = React.useMemo(() => {
+    if (analyticsFilter === 'admin') return groupedVisitors.filter(v => v.isAdmin);
+    if (analyticsFilter === 'guest') return groupedVisitors.filter(v => !v.isAdmin);
+    return groupedVisitors;
+  }, [groupedVisitors, analyticsFilter]);
+
+  const fetchBlogPosts = useCallback(async () => {
     setLoadingBlog(true);
     try {
-      const q = query(collection(db, 'blog_posts'), orderBy('timestamp', 'desc'));
+      const q = query(collection(db, 'blog_posts'), orderBy('timestamp', 'desc'), limit(50));
       const snapshot = await getDocs(q);
       setBlogPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (err) {
@@ -129,9 +181,9 @@ const AdminDashboard = () => {
     } finally {
       setLoadingBlog(false);
     }
-  };
+  }, []);
 
-  const deleteBlogPost = async (id) => {
+  const deleteBlogPost = useCallback(async (id) => {
     if (!window.confirm('Ngài có chắc chắn muốn xoá bài viết này không?')) return;
     try {
       await deleteDoc(doc(db, 'blog_posts', id));
@@ -139,7 +191,7 @@ const AdminDashboard = () => {
     } catch (err) {
       alert("Lỗi xoá bài: " + err.message);
     }
-  };
+  }, []);
 
   const seedBlogPosts = async () => {
     const integrations = localConfig?.integrations || {};
@@ -164,6 +216,7 @@ const AdminDashboard = () => {
       Lưu ý: Chỉ trả về JSON nguyên bản.`;
 
       setSeedingProgress(`--- ĐANG DÙNG IRIS GEMINI CORE ---`);
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(geminiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
       const result = await model.generateContent(prompt);
@@ -200,10 +253,9 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setLoadingAnalytics(true);
     try {
-      // Tăng giới hạn lên 1000 hoặc xóa limit để lấy "tất cả" từ trước đến nay
       const q = query(collection(db, "system_analytics"), orderBy('timestamp', 'desc'), limit(1000));
       const snapshot = await getDocs(q);
       setAnalyticsData(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -212,7 +264,7 @@ const AdminDashboard = () => {
     } finally {
       setLoadingAnalytics(false);
     }
-  };
+  }, []);
 
   const generateNewsletter = async () => {
     setNewsletterLoading(true);
@@ -251,10 +303,10 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoadingUsers(true);
     try {
-      const querySnapshot = await getDocs(collection(db, "users"));
+      const querySnapshot = await getDocs(query(collection(db, "users"), limit(50)));
       const usersData = [];
       querySnapshot.forEach((docSnap) => {
         usersData.push({ id: docSnap.id, ...docSnap.data() });
@@ -265,9 +317,9 @@ const AdminDashboard = () => {
     } finally {
       setLoadingUsers(false);
     }
-  };
+  }, []);
 
-  const deleteUserRecord = async (userId) => {
+  const deleteUserRecord = useCallback(async (userId) => {
     if (!window.confirm('Ngài có chắc chắn muốn xoá hồ sơ này khỏi Database?')) return;
     try {
       await deleteDoc(doc(db, "users", userId));
@@ -276,12 +328,12 @@ const AdminDashboard = () => {
     } catch (err) {
       alert("Lỗi khi xoá: " + err.message);
     }
-  };
+  }, []);
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     setLoadingProjects(true);
     try {
-      const q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
+      const q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'), limit(50));
       const snapshot = await getDocs(q);
       setProjectsList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (err) {
@@ -289,7 +341,7 @@ const AdminDashboard = () => {
     } finally {
       setLoadingProjects(false);
     }
-  };
+  }, []);
 
   const deleteProject = async (id) => {
     if (!window.confirm('Ngài có chắc chắn muốn xoá dự án này?')) return;
@@ -497,7 +549,7 @@ const AdminDashboard = () => {
     setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 1.5 });
   };
 
-  const updateNested = (category, field, value) => {
+  const updateNested = useCallback((category, field, value) => {
     setLocalConfig(prev => ({
       ...prev,
       [category]: {
@@ -505,7 +557,7 @@ const AdminDashboard = () => {
         [field]: value
       }
     }));
-  };
+  }, []);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -567,31 +619,49 @@ const AdminDashboard = () => {
     { id: 'appearance', label: 'GIAO DIỆN', icon: <Palette size={18} /> },
     { id: 'filmstrip', label: 'KỸ THUẬT SỐ & KÝ ỨC', icon: <ImageIcon size={18} /> },
     { id: 'apps', label: 'ỨNG DỤNG TIN DÙNG', icon: <Zap size={18} /> },
-    { id: 'content', label: 'NỘI DUNG KHÁC', icon: <FileText size={18} /> },
-        { id: 'maintenance', label: 'QUẢN LÝ TRẠNG THÁI TRANG', icon: <Lock size={18} /> },
-        { id: 'analytics', label: 'THỐNG KÊ TRAFFIC', icon: <BarChart3 size={18} /> },
+    { id: 'content', label: 'QUẢN LÝ DANH NGÔN', icon: <MessageSquare size={18} /> },
+    { id: 'maintenance', label: 'QUẢN LÝ TRẠNG THÁI TRANG', icon: <Lock size={18} /> },
+    { id: 'analytics', label: 'THỐNG KÊ TRAFFIC', icon: <BarChart3 size={18} /> },
     { id: 'blog', label: 'QUẢN LÝ BLOG', icon: <FileText size={18} /> },
     { id: 'projects', label: 'QUẢN LÝ DỰ ÁN', icon: <Package size={18} /> },
     { id: 'users', label: 'QUẢN LÝ TÀI KHOẢN', icon: <Users size={18} /> }
-
   ];
 
   if (loading || !localConfig) {
-    return <div className="admin-loading">INITIALIZING SYSTEM_ADMIN...</div>;
+    return <div className="admin-loading">Đang đồng bộ dữ liệu hệ thống BCT...</div>;
   }
 
   return (
     <div className="admin-dashboard">
-      <div className="admin-sidebar shadow-glow">
+      {/* Mobile Drawer Toggle Button */}
+      <button 
+        className="mobile-sidebar-toggle" 
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        aria-label="Toggle admin navigation menu"
+      >
+        {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+
+      {/* Mobile Backdrop */}
+      <div 
+        className={`mobile-sidebar-backdrop ${mobileMenuOpen ? 'active' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+        aria-hidden="true"
+      />
+
+      <aside className={`admin-sidebar ${mobileMenuOpen ? 'open' : ''}`}>
         <div className="admin-brand">
-          <Bot size={24} strokeWidth={2.5} />
-          <span>BCT_ADMIN_SHELL</span>
+          <div className="admin-brand-left">
+            <Bot size={22} style={{ color: 'var(--admin-accent)' }} />
+            <span>BCT STUDIO</span>
+          </div>
+          <span className="admin-brand-badge">v2.0 · Live</span>
         </div>
         
-        <nav className="admin-nav">
-          <Link to="/" className="nav-item-link" style={{ marginBottom: '1.5rem', opacity: 0.8 }}>
+        <nav className="admin-nav" aria-label="Admin Navigation">
+          <Link to="/" className="nav-item-link" style={{ marginBottom: '1.25rem' }}>
             <Home size={18} />
-            <span style={{ fontWeight: 600 }}>VỀ TRANG CHỦ</span>
+            <span>VỀ TRANG CHỦ</span>
           </Link>
 
           <div className="admin-nav-scroll">
@@ -599,7 +669,10 @@ const AdminDashboard = () => {
               <button 
                 key={tab.id}
                 className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setMobileMenuOpen(false);
+                }}
               >
                 {tab.icon}
                 <span>{tab.label}</span>
@@ -607,21 +680,13 @@ const AdminDashboard = () => {
             ))}
           </div>
         </nav>
-
-        <div style={{ padding: '1.5rem 0' }}>
-          <button className="save-btn" onClick={handleSave} disabled={isSaving} style={{ width: '100%' }}>
-            <Save size={18} />
-            <span>{isSaving ? 'ĐANG LƯU...' : 'LƯU TẤT CẢ'}</span>
-          </button>
-          {status && <div className="status-toast">{status}</div>}
-        </div>
-      </div>
+      </aside>
 
       <main className="admin-content">
         <header className="admin-header">
-          <div>
+          <div className="admin-header-titles">
             <h1>{tabs.find(t => t.id === activeTab)?.label}</h1>
-            <p>Hệ thống lõi BCT0902 - Core Console v2.0</p>
+            <p>Trung tâm quản trị nội dung & Cấu hình hệ thống BCT</p>
           </div>
           
           <div className="admin-header-actions">
@@ -894,36 +959,53 @@ const AdminDashboard = () => {
             {activeTab === 'content' && (
               <motion.div key="content" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="config-section">
                 <div className="admin-card">
-                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-                      <div className="config-section-title" style={{ margin: 0 }}>
-                         <MessageSquare size={18} /> QUẢN LÝ DANH NGÔN TÙY CHỈNH
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                      <div>
+                        <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
+                           <MessageSquare size={18} style={{ color: 'var(--admin-accent)' }} /> QUẢN LÝ DANH NGÔN TRANG CHỦ ({(localConfig.content?.quotes || []).length})
+                        </div>
+                        <p style={{ margin: 0, color: 'var(--admin-text-muted)', fontSize: '0.85rem' }}>
+                          Các câu trích dẫn sẽ hiển thị tự động trên thanh tiêu đề và chân trang web. Bấm trực tiếp vào ô để sửa.
+                        </p>
                       </div>
                       <button className="add-btn" onClick={() => {
-                        const newQuotes = [...(localConfig.content.quotes || [])];
+                        const newQuotes = [...(localConfig.content?.quotes || [])];
                         newQuotes.push('Danh ngôn mới...');
                         updateNested('content', 'quotes', newQuotes);
-                      }}>+ THÊM CÂU MỚI</button>
+                      }}>
+                        <Plus size={16} /> Thêm Câu Mới
+                      </button>
                    </div>
 
-                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', maxHeight: '55vh', overflowY: 'auto', paddingRight: '1rem' }} className="admin-nav-scroll">
-                      {(localConfig.content.quotes || []).map((quote, idx) => (
-                        <div key={idx} style={{ display: 'flex', gap: '1.2rem', alignItems: 'flex-start', background: 'rgba(0,0,0,0.2)', padding: '1.2rem', borderRadius: '16px', border: '1px solid var(--admin-border)' }}>
-                           <span style={{ minWidth: '35px', fontWeight: 800, color: 'var(--admin-accent)', paddingTop: '0.5rem', opacity: 0.5 }}>{String(idx + 1).padStart(2, '0')}</span>
-                           <textarea 
-                             className="admin-textarea"
-                             value={quote} 
-                             style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontSize: '1rem', resize: 'none' }}
-                             onChange={(e) => {
-                               const newQuotes = [...localConfig.content.quotes];
-                               newQuotes[idx] = e.target.value;
-                               updateNested('content', 'quotes', newQuotes);
-                             }} 
-                             rows={2} 
-                           />
-                           <button className="btn-ghost" style={{ color: '#ef4444', padding: '0.6rem' }} onClick={() => {
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '60vh', overflowY: 'auto' }} className="admin-nav-scroll">
+                      {(localConfig.content?.quotes || []).map((quote, idx) => (
+                        <div key={idx} className="quote-item-card">
+                           <span className="quote-index">{String(idx + 1).padStart(2, '0')}</span>
+                           <div className="quote-text-container">
+                             <textarea 
+                               className="admin-textarea"
+                               value={quote} 
+                               style={{ width: '100%', background: 'transparent', border: '1px solid transparent', color: 'var(--admin-text-primary)', fontSize: '0.92rem', resize: 'vertical', padding: '0.4rem 0.6rem', minHeight: '52px' }}
+                               onChange={(e) => {
+                                 const newQuotes = [...localConfig.content.quotes];
+                                 newQuotes[idx] = e.target.value;
+                                 updateNested('content', 'quotes', newQuotes);
+                               }} 
+                               rows={2} 
+                               aria-label={`Câu danh ngôn số ${idx + 1}`}
+                             />
+                           </div>
+                           <button 
+                             className="btn-ghost" 
+                             style={{ color: '#ef4444', minWidth: '40px', minHeight: '40px', padding: 0 }} 
+                             onClick={() => {
                                const newQuotes = localConfig.content.quotes.filter((_, i) => i !== idx);
                                updateNested('content', 'quotes', newQuotes);
-                           }}><Trash2 size={16} /></button>
+                             }}
+                             aria-label={`Xóa danh ngôn số ${idx + 1}`}
+                           >
+                             <Trash2 size={16} />
+                           </button>
                         </div>
                       ))}
                    </div>
@@ -957,7 +1039,7 @@ const AdminDashboard = () => {
                         <div className="social-color-picker" style={{ background: localConfig.appearance.primaryColor }}>
                           <input type="color" value={localConfig.appearance.primaryColor} onChange={(e) => updateNested('appearance', 'primaryColor', e.target.value)} />
                         </div>
-                        <code style={{ fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', padding: '0.5rem 1rem', borderRadius: '8px' }}>{localConfig.appearance.primaryColor}</code>
+                        <code style={{ fontSize: '0.9rem', background: 'var(--bg-glass)', padding: '0.5rem 1rem', borderRadius: '8px' }}>{localConfig.appearance.primaryColor}</code>
                       </div>
                     </div>
 
@@ -967,7 +1049,7 @@ const AdminDashboard = () => {
                         <div className="social-color-picker" style={{ background: localConfig.appearance.accentColor }}>
                           <input type="color" value={localConfig.appearance.accentColor} onChange={(e) => updateNested('appearance', 'accentColor', e.target.value)} />
                         </div>
-                        <code style={{ fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', padding: '0.5rem 1rem', borderRadius: '8px' }}>{localConfig.appearance.accentColor}</code>
+                        <code style={{ fontSize: '0.9rem', background: 'var(--bg-glass)', padding: '0.5rem 1rem', borderRadius: '8px' }}>{localConfig.appearance.accentColor}</code>
                       </div>
                     </div>
                   </div>
@@ -1009,92 +1091,152 @@ const AdminDashboard = () => {
             {activeTab === 'analytics' && (
               <motion.div key="analytics" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="config-section">
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-                  <div className="admin-card" style={{ padding: '1.5rem', borderLeft: '4px solid #00d2ff', marginBottom: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', opacity: 0.6, fontSize: '0.7rem', marginBottom: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                       <span>TỔNG LƯỢT TRUY CẬP</span>
-                       <Eye size={14} />
-                    </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#00d2ff', textShadow: '0 0 15px rgba(0, 210, 255, 0.3)' }}>
-                      {analyticsData.length}
-                    </div>
-                  </div>
-                  
+                {/* Top Metrics Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
                   <div className="admin-card" style={{ padding: '1.5rem', borderLeft: '4px solid var(--admin-accent)', marginBottom: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', opacity: 0.6, fontSize: '0.7rem', marginBottom: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                       <span>TRANG PHỔ BIẾN NHẤT</span>
-                       <TrendingUp size={14} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--admin-text-muted)', fontSize: '0.75rem', marginBottom: '0.6rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>
+                       <span>NGƯỜI TRUY CẬP (UNIQUE)</span>
+                       <Users size={16} />
                     </div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--admin-accent)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {(() => {
-                        const counts = {};
-                        analyticsData.forEach(d => counts[d.path] = (counts[d.path] || 0) + 1);
-                        const top = Object.entries(counts).sort((a,b) => b[1]-a[1])[0];
-                        return top ? top[0] : 'N/A';
-                      })()}
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--admin-accent)', letterSpacing: '-0.03em' }}>
+                      {groupedVisitors.length}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginTop: '0.35rem' }}>
+                      {groupedVisitors.filter(v => !v.isAdmin).length} Khách ngoài · {groupedVisitors.filter(v => v.isAdmin).length} Admin
                     </div>
                   </div>
 
                   <div className="admin-card" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981', marginBottom: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', opacity: 0.6, fontSize: '0.7rem', marginBottom: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                       <span>MOBILE VS DESKTOP</span>
-                       <Smartphone size={14} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--admin-text-muted)', fontSize: '0.75rem', marginBottom: '0.6rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>
+                       <span>TỔNG LƯỢT XEM (HITS)</span>
+                       <Eye size={16} />
                     </div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#10b981' }}>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#10b981', letterSpacing: '-0.03em' }}>
+                      {analyticsData.length}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginTop: '0.35rem' }}>
+                      Toàn bộ lượt tải trang ghi nhận
+                    </div>
+                  </div>
+                  
+                  <div className="admin-card" style={{ padding: '1.5rem', borderLeft: '4px solid #6366f1', marginBottom: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--admin-text-muted)', fontSize: '0.75rem', marginBottom: '0.6rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>
+                       <span>TRANG ĐƯỢC XEM NHẤT</span>
+                       <TrendingUp size={16} />
+                    </div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--admin-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '0.25rem' }}>
+                      {(() => {
+                        const counts = {};
+                        analyticsData.forEach(d => { if (d.path) counts[d.path] = (counts[d.path] || 0) + 1; });
+                        const top = Object.entries(counts).sort((a,b) => b[1]-a[1])[0];
+                        return top ? `${top[0]} (${top[1]} hits)` : 'N/A';
+                      })()}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginTop: '0.35rem' }}>
+                      Điểm đến phổ biến nhất
+                    </div>
+                  </div>
+
+                  <div className="admin-card" style={{ padding: '1.5rem', borderLeft: '4px solid #f59e0b', marginBottom: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--admin-text-muted)', fontSize: '0.75rem', marginBottom: '0.6rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>
+                       <span>THIẾT BỊ DI ĐỘNG</span>
+                       <Smartphone size={16} />
+                    </div>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#f59e0b', letterSpacing: '-0.03em' }}>
                       {(() => {
                         let mob = 0;
-                        analyticsData.forEach(d => { if(/Android|iPhone/i.test(d.userAgent)) mob++; });
-                        const mobPerc = analyticsData.length ? Math.round((mob/analyticsData.length)*100) : 0;
-                        return `${mobPerc}% / ${100-mobPerc}%`;
+                        analyticsData.forEach(d => { if(d.isMobile || /Android|iPhone/i.test(d.userAgent)) mob++; });
+                        return analyticsData.length ? `${Math.round((mob/analyticsData.length)*100)}%` : '0%';
                       })()}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginTop: '0.35rem' }}>
+                      Tỷ lệ truy cập từ Mobile / Tablet
                     </div>
                   </div>
                 </div>
 
+                {/* Analytics List & Controls */}
                 <div className="admin-card" style={{ padding: '2rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                     <div className="config-section-title" style={{ margin: 0 }}>
-                        <Activity size={18} /> LƯU LƯỢNG TRUY CẬP THỜI GIAN THỰC
+                  <div className="analytics-filter-bar">
+                     <div>
+                        <div className="config-section-title" style={{ margin: '0 0 0.3rem 0' }}>
+                           <Activity size={18} style={{ color: 'var(--admin-accent)' }} /> LƯU LƯỢNG TRUY CẬP ĐÃ GOM NHÓM
+                        </div>
+                        <p style={{ margin: 0, color: 'var(--admin-text-muted)', fontSize: '0.85rem' }}>
+                          Mỗi hàng đại diện cho 1 người/thiết bị riêng biệt. Bấm Refresh để cập nhật dữ liệu mới nhất.
+                        </p>
                      </div>
-                     <button className="add-btn" onClick={fetchAnalytics} disabled={loadingAnalytics}>
-                       <Activity size={16} className={loadingAnalytics ? "spin" : ""} /> REFRESH
-                     </button>
+
+                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div className="filter-pills">
+                          <button 
+                            className={`filter-pill ${analyticsFilter === 'all' ? 'active' : ''}`}
+                            onClick={() => setAnalyticsFilter('all')}
+                          >
+                            Tất cả ({groupedVisitors.length})
+                          </button>
+                          <button 
+                            className={`filter-pill ${analyticsFilter === 'guest' ? 'active' : ''}`}
+                            onClick={() => setAnalyticsFilter('guest')}
+                          >
+                            👤 Khách ({groupedVisitors.filter(v => !v.isAdmin).length})
+                          </button>
+                          <button 
+                            className={`filter-pill ${analyticsFilter === 'admin' ? 'active' : ''}`}
+                            onClick={() => setAnalyticsFilter('admin')}
+                          >
+                            👑 Admin ({groupedVisitors.filter(v => v.isAdmin).length})
+                          </button>
+                        </div>
+
+                        <button className="add-btn" onClick={fetchAnalytics} disabled={loadingAnalytics}>
+                          <Activity size={16} className={loadingAnalytics ? "spin" : ""} /> REFRESH
+                        </button>
+                     </div>
                   </div>
 
-                  <div className="users-table-container">
-                    <table className="users-table">
-                      <thead>
-                        <tr>
-                          <th>Sự kiện</th>
-                          <th>Đường dẫn</th>
-                          <th>Thời gian</th>
-                          <th>Thiết bị</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {analyticsData.map(log => (
-                          <tr key={log.id}>
-                            <td>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: log.event === 'PAGE_VIEW' ? '#00d2ff' : 'var(--admin-accent)', boxShadow: `0 0 10px ${log.event === 'PAGE_VIEW' ? '#00d2ff' : 'var(--admin-accent)'}` }} />
-                                <span style={{ fontWeight: 700, fontSize: '0.8rem' }}>{log.event}</span>
-                              </div>
-                            </td>
-                            <td><code style={{ fontSize: '0.8rem', color: 'var(--admin-accent)', background: 'rgba(0,0,0,0.3)', padding: '2px 8px', borderRadius: '4px' }}>{log.path}</code></td>
-                            <td>
-                              <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-muted)' }}>
-                                {log.timestamp?.toDate?.()?.toLocaleString() || 'Vừa xong'}
-                              </div>
-                            </td>
-                            <td style={{ fontSize: '0.75rem', opacity: 0.6 }}>
-                               {/Android|iPhone/i.test(log.userAgent) ? <Smartphone size={14} style={{marginRight:'6px'}} /> : <Monitor size={14} style={{marginRight:'6px'}} />}
-                               {log.userAgent.slice(0, 50)}...
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  {filteredVisitors.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--admin-text-muted)' }}>
+                      Không tìm thấy dữ liệu lưu lượng phù hợp với bộ lọc.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {filteredVisitors.map((v, i) => (
+                        <div key={v.visitorId || i} className="visitor-row-card">
+                          <div className="visitor-header">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                              {v.isAdmin ? (
+                                <span className="visitor-badge-admin">👑 CHÍNH BẠN (ADMIN)</span>
+                              ) : (
+                                <span className="visitor-badge-guest">👤 KHÁCH #{v.visitorId.slice(-6).toUpperCase()}</span>
+                              )}
+                              <span style={{ fontSize: '0.85rem', color: 'var(--admin-text-muted)' }}>
+                                {v.deviceLabel}
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                              <span className="visitor-hits">
+                                {v.totalHits} lượt xem
+                              </span>
+                              <span style={{ fontSize: '0.8rem', color: 'var(--admin-text-muted)' }}>
+                                {v.lastTimestamp?.toDate ? v.lastTimestamp.toDate().toLocaleString() : 'Vừa xong'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="visitor-paths">
+                            <span style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginRight: '0.25rem', display: 'flex', alignItems: 'center' }}>
+                              Trang đã xem:
+                            </span>
+                            {Array.from(v.paths).map((p, pIdx) => (
+                              <span key={pIdx} className="path-chip">{p}</span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -1129,20 +1271,20 @@ const AdminDashboard = () => {
                           <tr key={post.id}>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <img src={post.thumbnail} style={{ width: '45px', height: '45px', borderRadius: '10px', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }} alt="" />
+                                <img src={post.thumbnail} style={{ width: '45px', height: '45px', borderRadius: '10px', objectFit: 'cover', border: '1px solid var(--admin-border)' }} alt={post.title || 'Thumbnail bài viết'} />
                                 <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{post.title}</div>
                               </div>
                             </td>
                             <td>
-                              <span style={{ fontSize: '0.7rem', color: post.published ? 'var(--admin-accent)' : '#f59e0b', background: 'rgba(255,255,255,0.03)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                              <span style={{ fontSize: '0.7rem', color: post.published ? 'var(--admin-accent)' : '#f59e0b', background: 'var(--bg-glass)', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--admin-border)' }}>
                                 {post.category?.toUpperCase() || 'TECH'} | {post.published ? 'PUBLIC' : 'DRAFT'}
                               </span>
                             </td>
                             <td style={{ fontSize: '0.8rem', opacity: 0.6 }}>{post.date}</td>
                             <td>
                               <div className="action-btns" style={{ justifyContent: 'flex-end' }}>
-                                <Link to={`/admin/cms/${post.id}`} className="edit-btn"><Edit size={16} /></Link>
-                                <button className="delete-btn" onClick={() => deleteBlogPost(post.id)}><Trash2 size={16} /></button>
+                                <Link to={`/admin/cms/${post.id}`} className="edit-btn" aria-label={`Edit post ${post.title}`}><Edit size={16} /></Link>
+                                <button className="delete-btn" onClick={() => deleteBlogPost(post.id)} aria-label={`Delete post ${post.title}`}><Trash2 size={16} /></button>
                               </div>
                             </td>
                           </tr>
@@ -1181,7 +1323,7 @@ const AdminDashboard = () => {
                                 <tr key={user.id}>
                                    <td>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                         <img src={user.photoURL} style={{ width: '38px', height: '38px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)' }} alt="" />
+                                         <img src={user.photoURL} style={{ width: '38px', height: '38px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)' }} alt={user.displayName || 'Avatar'} />
                                          <div>
                                             <div style={{ fontWeight: 700 }}>{user.displayName}</div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--admin-accent)' }}>@{user.username}</div>
@@ -1192,8 +1334,8 @@ const AdminDashboard = () => {
                                    <td><span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', background: user.role === 'admin' ? 'rgba(0,240,255,0.1)' : 'rgba(255,255,255,0.05)', color: user.role === 'admin' ? 'var(--admin-accent)' : '#fff' }}>{user.role?.toUpperCase()}</span></td>
                                    <td>
                                       <div className="action-btns" style={{ justifyContent: 'flex-end' }}>
-                                         <button onClick={() => setUserModal({ isOpen: true, mode: 'edit', data: user })}><Edit size={16} /></button>
-                                         <button onClick={() => deleteUserRecord(user.id)} className="delete-btn"><Trash2 size={16} /></button>
+                                         <button onClick={() => setUserModal({ isOpen: true, mode: 'edit', data: user })} aria-label={`Edit user ${user.displayName}`}><Edit size={16} /></button>
+                                         <button onClick={() => deleteUserRecord(user.id)} className="delete-btn" aria-label={`Delete user ${user.displayName}`}><Trash2 size={16} /></button>
                                       </div>
                                    </td>
                                 </tr>
@@ -1263,19 +1405,19 @@ const AdminDashboard = () => {
                           <tr key={proj.id}>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <img src={proj.thumbnail} style={{ width: '45px', height: '45px', borderRadius: '10px', objectFit: 'cover' }} alt="" />
+                                <img src={proj.thumbnail} style={{ width: '45px', height: '45px', borderRadius: '10px', objectFit: 'cover', border: '1px solid var(--admin-border)' }} alt={proj.title || 'Dự án'} />
                                 <div>
                                   <div style={{ fontWeight: 700 }}>{proj.title}</div>
                                   <div style={{ fontSize: '0.7rem', opacity: 0.5 }}>{Array.isArray(proj.techStack) ? proj.techStack.join(', ') : proj.techStack}</div>
                                 </div>
                               </div>
                             </td>
-                            <td><code style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px' }}>v{proj.version}</code></td>
-                            <td style={{ fontWeight: 800, color: '#10b981' }}>{proj.downloadCount || 0}</td>
+                            <td><code style={{ fontSize: '0.8rem', background: 'var(--bg-glass)', padding: '2px 8px', borderRadius: '4px' }}>v{proj.version}</code></td>
+                            <td style={{ fontWeight: 800, color: 'var(--admin-text-secondary)' }}>{proj.downloadCount || 0}</td>
                             <td>
                               <div className="action-btns" style={{ justifyContent: 'flex-end' }}>
-                                <button onClick={() => setProjectModal({ isOpen: true, mode: 'edit', data: { ...proj, techStack: Array.isArray(proj.techStack) ? proj.techStack.join(', ') : proj.techStack } })}><Edit size={16} /></button>
-                                <button onClick={() => deleteProject(proj.id)} className="delete-btn"><Trash2 size={16} /></button>
+                                <button onClick={() => setProjectModal({ isOpen: true, mode: 'edit', data: { ...proj, techStack: Array.isArray(proj.techStack) ? proj.techStack.join(', ') : proj.techStack } })} aria-label={`Edit project ${proj.title}`}><Edit size={16} /></button>
+                                <button onClick={() => deleteProject(proj.id)} className="delete-btn" aria-label={`Delete project ${proj.title}`}><Trash2 size={16} /></button>
                               </div>
                             </td>
                           </tr>
