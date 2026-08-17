@@ -38,7 +38,8 @@ import {
   Package,
   Download,
   ExternalLink as LinkIcon,
-  Menu
+  Menu,
+  Box
 } from 'lucide-react';
 
 import { db } from '../../firebase';
@@ -655,7 +656,6 @@ const AdminDashboard = () => {
             <Bot size={22} style={{ color: 'var(--admin-accent)' }} />
             <span>BCT STUDIO</span>
           </div>
-          <span className="admin-brand-badge">v2.0 · Live</span>
         </div>
         
         <nav className="admin-nav" aria-label="Admin Navigation">
@@ -686,13 +686,22 @@ const AdminDashboard = () => {
         <header className="admin-header">
           <div className="admin-header-titles">
             <h1>{tabs.find(t => t.id === activeTab)?.label}</h1>
-            <p>Trung tâm quản trị nội dung & Cấu hình hệ thống BCT</p>
+            <p>Studio Workspace · Cấu hình hệ thống BCT</p>
           </div>
           
           <div className="admin-header-actions">
-            <button className="save-btn shadow-glow" onClick={handleSave} disabled={isSaving}>
-              <Save size={18} />
+            <div className="header-status-pill">
+              <span className="header-status-dot"></span>
+              <span>Firestore Live</span>
+            </div>
+            <a href="/" target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ textDecoration: 'none' }}>
+              <ExternalLink size={16} />
+              <span>Xem Web</span>
+            </a>
+            <button className="save-btn" onClick={handleSave} disabled={isSaving}>
+              <Save size={16} />
               <span>{isSaving ? 'ĐANG LƯU...' : 'LƯU THAY ĐỔI'}</span>
+              <span className="save-shortcut-badge">⌘S</span>
             </button>
           </div>
         </header>
@@ -712,7 +721,7 @@ const AdminDashboard = () => {
                        <input 
                          type="text" 
                          className="admin-input"
-                         value={localConfig.appearance.logoUrl} 
+                         value={localConfig.appearance?.logoUrl || ''} 
                          onChange={(e) => updateNested('appearance', 'logoUrl', e.target.value)}
                          placeholder="URL Logo hoặc tải lên..."
                        />
@@ -721,7 +730,7 @@ const AdminDashboard = () => {
                              <Upload size={18} /> TẢI LÊN
                              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, (res) => updateNested('appearance', 'logoUrl', res), 1)} />
                           </label>
-                          {localConfig.appearance.logoUrl && (
+                          {localConfig.appearance?.logoUrl && (
                              <button className="btn-ghost" onClick={() => handleReAdjust(localConfig.appearance.logoUrl, (res) => updateNested('appearance', 'logoUrl', res), 1)}>
                                 <Crop size={18} />
                              </button>
@@ -744,29 +753,12 @@ const AdminDashboard = () => {
                       }}>
                           <Plus size={16} /> THÊM MXH
                       </button>
-                      {(localConfig.social_links || []).length > 0 && (
-                          <button className="add-btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }} onClick={() => {
-                              if (window.confirm("Ngài chắc chắn muốn xóa TẤT CẢ mạng xã hội này chứ? Thao tác này không thể hoàn tác.")) {
-                                  setLocalConfig(prev => ({ ...prev, social_links: [] }));
-                              }
-                          }}>
-                              <Trash2 size={16} /> XÓA HẾT
-                          </button>
-                      )}
                     </div>
                   </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {(localConfig.social_links || []).map((social, idx) => (
                     <div key={idx} className="social-manage-row">
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <input type="checkbox" className="admin-checkbox" checked={social.isVisible !== false} onChange={(e) => {
-                          const newSocials = [...localConfig.social_links];
-                          newSocials[idx].isVisible = e.target.checked;
-                          setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                        }} />
-                      </div>
-                      
                       <input type="text" className="admin-input" placeholder="Tên" value={social.name} onChange={(e) => {
                         const newSocials = [...localConfig.social_links];
                         newSocials[idx].name = e.target.value;
@@ -801,10 +793,10 @@ const AdminDashboard = () => {
 
                       <div className="action-btns">
                         <button onClick={() => {
-                          const newSocials = [...localConfig.social_links];
+                          const newSocials = [...(localConfig.social_links || [])];
                           newSocials.splice(idx, 1);
                           setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                        }} className="delete-btn">
+                        }} className="delete-btn" aria-label={`Xóa ${social.name}`}>
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -815,67 +807,93 @@ const AdminDashboard = () => {
             </motion.div>
           )}
 
-            {activeTab === 'filmstrip' && (
-              <motion.div key="filmstrip" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="config-section">
-                <div className="input-group">
-                   <label>TỐC ĐỘ CUỘN PHIM (GIÂY)</label>
-                   <input type="number" value={localConfig.content.filmStripSpeed || 45} onChange={(e) => updateNested('content', 'filmStripSpeed', Number(e.target.value))} min="10" max="120" />
+          {activeTab === 'filmstrip' && (
+              <motion.div key="filmstrip" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="config-section">
+                <div className="admin-card">
+                  <div className="config-section-title">
+                    <ImageIcon size={18} /> CẤU HÌNH DẢI PHIM KỸ THUẬT SỐ
+                  </div>
+                  
+                  <div className="form-group">
+                     <label>TỐC ĐỘ CUỘN PHIM (GIÂY)</label>
+                     <input 
+                       type="number" 
+                       className="admin-input" 
+                       value={localConfig.content?.filmStripSpeed || 45} 
+                       onChange={(e) => updateNested('content', 'filmStripSpeed', Number(e.target.value))} 
+                       min="10" 
+                       max="120" 
+                     />
+                  </div>
                 </div>
-                <div className="manager-header" style={{ marginTop: '2rem' }}>
-                  <label>HÌNH ẢNH DẢI PHIM (FILM STRIP)</label>
-                  <button className="add-btn" onClick={() => {
-                     const newFilms = [...(localConfig.content.filmStripImages || [])];
-                     newFilms.push('');
-                     updateNested('content', 'filmStripImages', newFilms);
-                  }}>
-                    <Plus size={14} /> THÊM ẢNH/VIDEO
-                  </button>
-                </div>
-                <div className="film-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                  {(localConfig.content.filmStripImages || []).map((imgUrl, idx) => {
-                    const isVideo = imgUrl?.match(/\.(mp4|webm|ogg|mov)$|^data:video/i);
-                    return (
-                      <div key={idx} className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
-                         <div style={{ height: '140px', background: '#000', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                            {isVideo ? (
-                              <video src={imgUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} autoPlay muted loop />
-                            ) : (
-                              <img src={imgUrl} alt="strip" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => e.target.src = '/placeholder.png'} />
-                            )}
-                         </div>
-                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <input type="text" placeholder="URL hoặc Base64" value={imgUrl} style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }} onChange={(e) => {
-                               const newFilms = [...localConfig.content.filmStripImages];
-                               newFilms[idx] = e.target.value;
-                               updateNested('content', 'filmStripImages', newFilms);
-                            }} />
-                            <div style={{ display: 'flex', gap: '0.3rem' }}>
-                               <label style={{ background: 'var(--accent-main)', color: '#fff', padding: '0.6rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                                  <Upload size={14} />
-                                  <input type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, (res) => {
-                                     const newFilms = [...localConfig.content.filmStripImages];
-                                     newFilms[idx] = res;
-                                     updateNested('content', 'filmStripImages', newFilms);
-                                  }, 1.77)} />
-                               </label>
-                               {!isVideo && imgUrl && (
-                                  <button style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', padding: '0.6rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }} onClick={() => handleReAdjust(imgUrl, (res) => {
-                                     const newFilms = [...localConfig.content.filmStripImages];
-                                     newFilms[idx] = res;
-                                     updateNested('content', 'filmStripImages', newFilms);
-                                  }, 1.77)}>
-                                     <Crop size={14} />
-                                  </button>
-                               )}
-                            </div>
-                            <button style={{ background: 'var(--danger)', color: '#fff', padding: '0.6rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }} onClick={() => {
-                               const newFilms = localConfig.content.filmStripImages.filter((_, i) => i !== idx);
-                               updateNested('content', 'filmStripImages', newFilms);
-                            }}><Trash2 size={14} /></button>
-                         </div>
-                      </div>
-                    );
-                  })}
+
+                <div className="admin-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <div className="config-section-title" style={{ margin: 0 }}>
+                      <ImageIcon size={18} /> HÌNH ẢNH DẢI PHIM ({(localConfig.content?.filmStripImages || []).length})
+                    </div>
+                    <button className="add-btn" onClick={() => {
+                       const newFilms = [...(localConfig.content?.filmStripImages || [])];
+                       newFilms.push('');
+                       updateNested('content', 'filmStripImages', newFilms);
+                    }}>
+                      <Plus size={16} /> THÊM ẢNH/VIDEO
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                    {(localConfig.content?.filmStripImages || []).map((imgUrl, idx) => {
+                      const isVideo = imgUrl?.match(/\.(mp4|webm|ogg|mov)$|^data:video/i);
+                      return (
+                        <div key={idx} className="visitor-row-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                           <div style={{ height: '140px', background: '#000', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--admin-border)' }}>
+                              {isVideo ? (
+                                <video src={imgUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} autoPlay muted loop />
+                              ) : (
+                                <img src={imgUrl} alt="strip" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => e.target.src = '/placeholder.png'} />
+                              )}
+                           </div>
+                           <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <input 
+                                type="text" 
+                                className="admin-input" 
+                                placeholder="URL ảnh hoặc Base64..." 
+                                value={imgUrl} 
+                                style={{ flex: 1, fontSize: '0.82rem', padding: '0.45rem 0.65rem' }} 
+                                onChange={(e) => {
+                                  const newFilms = [...(localConfig.content?.filmStripImages || [])];
+                                  newFilms[idx] = e.target.value;
+                                  updateNested('content', 'filmStripImages', newFilms);
+                                }} 
+                              />
+                              <div style={{ display: 'flex', gap: '0.3rem' }}>
+                                 <label className="btn-primary" style={{ cursor: 'pointer', padding: '0.45rem 0.65rem', minHeight: 'auto' }}>
+                                    <Upload size={14} />
+                                    <input type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, (res) => {
+                                       const newFilms = [...(localConfig.content?.filmStripImages || [])];
+                                       newFilms[idx] = res;
+                                       updateNested('content', 'filmStripImages', newFilms);
+                                    }, 1.77)} />
+                                 </label>
+                                 {!isVideo && imgUrl && (
+                                    <button className="btn-ghost" style={{ padding: '0.45rem 0.65rem', minHeight: 'auto' }} onClick={() => handleReAdjust(imgUrl, (res) => {
+                                       const newFilms = [...(localConfig.content?.filmStripImages || [])];
+                                       newFilms[idx] = res;
+                                       updateNested('content', 'filmStripImages', newFilms);
+                                    }, 1.77)}>
+                                       <Crop size={14} />
+                                    </button>
+                                 )}
+                              </div>
+                              <button className="delete-btn" style={{ padding: '0.45rem', borderRadius: '6px' }} onClick={() => {
+                                 const newFilms = (localConfig.content?.filmStripImages || []).filter((_, i) => i !== idx);
+                                 updateNested('content', 'filmStripImages', newFilms);
+                              }}><Trash2 size={15} /></button>
+                           </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -977,17 +995,16 @@ const AdminDashboard = () => {
                       </button>
                    </div>
 
-                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '60vh', overflowY: 'auto' }} className="admin-nav-scroll">
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '65vh', overflowY: 'auto' }} className="admin-nav-scroll">
                       {(localConfig.content?.quotes || []).map((quote, idx) => (
                         <div key={idx} className="quote-item-card">
                            <span className="quote-index">{String(idx + 1).padStart(2, '0')}</span>
                            <div className="quote-text-container">
                              <textarea 
-                               className="admin-textarea"
+                               className="quote-edit-input"
                                value={quote} 
-                               style={{ width: '100%', background: 'transparent', border: '1px solid transparent', color: 'var(--admin-text-primary)', fontSize: '0.92rem', resize: 'vertical', padding: '0.4rem 0.6rem', minHeight: '52px' }}
                                onChange={(e) => {
-                                 const newQuotes = [...localConfig.content.quotes];
+                                 const newQuotes = [...(localConfig.content?.quotes || [])];
                                  newQuotes[idx] = e.target.value;
                                  updateNested('content', 'quotes', newQuotes);
                                }} 
@@ -996,10 +1013,9 @@ const AdminDashboard = () => {
                              />
                            </div>
                            <button 
-                             className="btn-ghost" 
-                             style={{ color: '#ef4444', minWidth: '40px', minHeight: '40px', padding: 0 }} 
+                             className="delete-btn" 
                              onClick={() => {
-                               const newQuotes = localConfig.content.quotes.filter((_, i) => i !== idx);
+                               const newQuotes = (localConfig.content?.quotes || []).filter((_, i) => i !== idx);
                                updateNested('content', 'quotes', newQuotes);
                              }}
                              aria-label={`Xóa danh ngôn số ${idx + 1}`}
@@ -1208,7 +1224,7 @@ const AdminDashboard = () => {
                               {v.isAdmin ? (
                                 <span className="visitor-badge-admin">👑 CHÍNH BẠN (ADMIN)</span>
                               ) : (
-                                <span className="visitor-badge-guest">👤 KHÁCH #{v.visitorId.slice(-6).toUpperCase()}</span>
+                                <span className="visitor-badge-guest">👤 KHÁCH #{String(v.visitorId || 'guest').slice(-6).toUpperCase()}</span>
                               )}
                               <span style={{ fontSize: '0.85rem', color: 'var(--admin-text-muted)' }}>
                                 {v.deviceLabel}
