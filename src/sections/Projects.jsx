@@ -8,25 +8,31 @@ const Projects = () => {
 
   const projects = [
     {
+      id: 'eink',
+      title: "AESL0213 E-Ink BLE",
+      description: "Ứng dụng web điều khiển và nạp ảnh 3 màu (Đen, Trắng, Đỏ) lên màn hình mực điện tử AESL0213 qua giao thức Bluetooth Low Energy (Web BLE).",
+      tech: ["Web Bluetooth", "E-Ink 122x250", "nRF52811", "Floyd-Steinberg"],
+      color: "var(--accent-main)",
+      demoUrl: "https://bctoiws0902.github.io/sent_pic_to_eink/",
+      githubUrl: "https://github.com/BCToiws0902/sent_pic_to_eink"
+    },
+    {
       id: 1,
       title: "CyberSystem OS",
       description: "A highly interactive web-based operating system visualization using React and Framer Motion.",
       tech: ["React", "Framer", "Zustand"],
-      color: "var(--accent-main)"
+      color: "var(--accent-secondary)",
+      demoUrl: "https://github.com/BCToiws0902",
+      githubUrl: "https://github.com/BCToiws0902"
     },
     {
       id: 2,
       title: "Neon E-commerce",
       description: "Full-stack e-commerce platform with dark mode default, Stripe integration, and real-time inventory.",
       tech: ["Next.js", "Node.js", "MongoDB"],
-      color: "var(--accent-secondary)"
-    },
-    {
-      id: 3,
-      title: "AI Code Assistant",
-      description: "A desktop application integrating offline AI models for intelligent code auto-completion.",
-      tech: ["Electron", "Python", "Llama.cpp"],
-      color: "var(--success)"
+      color: "#f59e0b",
+      demoUrl: "https://github.com/BCToiws0902",
+      githubUrl: "https://github.com/BCToiws0902"
     }
   ];
 
@@ -62,7 +68,6 @@ const Projects = () => {
               position: 'relative'
             }}
           >
-            {}
             <div style={{
               position: 'absolute',
               top: 0, left: 0, bottom: 0, width: '4px',
@@ -70,8 +75,7 @@ const Projects = () => {
             }} />
 
             <div style={{ aspectRatio: '16/9', background: 'var(--bg-primary)', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid var(--bg-glass-border)' }}>
-              {}
-              <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>[ PROJECT IMAGE ]</span>
+              <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>[ {project.title} ]</span>
             </div>
 
             <div>
@@ -83,20 +87,24 @@ const Projects = () => {
               </p>
               
               <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-                {project.tech.map((t, i) => (
+                {project.tech.map((tItem, i) => (
                   <span key={i} style={{ color: project.color, fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>
-                    {t}
+                    {tItem}
                   </span>
                 ))}
               </div>
 
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} className="btn-secondary">
-                  <GitBranch size={18} /> {t('projects.view_source')}
-                </a>
-                <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: project.color, color: '#000' }} className="btn-primary">
-                  <ExternalLink size={18} /> {t('projects.live_demo')}
-                </a>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                {project.githubUrl && (
+                  <a href={project.githubUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} className="btn-secondary">
+                    <GitBranch size={18} /> {t('projects.view_source')}
+                  </a>
+                )}
+                {project.demoUrl && (
+                  <a href={project.demoUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: project.color, color: '#000', textDecoration: 'none' }} className="btn-primary">
+                    <ExternalLink size={18} /> {t('projects.live_demo')}
+                  </a>
+                )}
               </div>
             </div>
           </motion.div>

@@ -19,6 +19,28 @@ import Navbar from '../components/Navbar';
 import MobileBottomNav from '../components/MobileBottomNav';
 import LoadingScreen from '../components/LoadingScreen';
 
+const FALLBACK_EINK_PROJECT = {
+  id: 'aesl0213-eink-ble',
+  title: 'AESL0213 E-Ink BLE',
+  category: 'IoT / Web Bluetooth',
+  tags: ['Web BLE', 'E-Ink 122x250', 'nRF52811', 'Floyd-Steinberg'],
+  techStack: ['Web Bluetooth API', 'E-Ink AESL0213', 'nRF52811 BLE', 'HTML5 Canvas', 'Floyd-Steinberg Dithering'],
+  description: 'Ứng dụng web điều khiển và nạp ảnh 3 màu (Đen, Trắng, Đỏ) lên màn hình mực điện tử AESL0213 qua giao thức Bluetooth Low Energy (Web BLE).',
+  longDescription: `### Giới thiệu dự án
+**AESL0213 E-Ink BLE** là giải pháp phần mềm web cho phép kết nối trực tiếp với thẻ màn hình mực điện tử AESL0213 (122x250 pixels, 3 màu BWR) thông qua chuẩn Web Bluetooth Low Energy (BLE) từ trình duyệt mà không cần cài đặt ứng dụng native.
+
+#### Các tính năng nổi bật:
+* **Kết nối BLE trực tiếp:** Tự động quét và kết nối với các thẻ E-ink dùng chip Nordic nRF52811.
+* **Xử lý ảnh & Tán sắc Floyd-Steinberg:** Chuyển đổi ảnh màu bất kỳ sang định dạng 3 màu (Đen, Trắng, Đỏ) cực kỳ sắc nét.
+* **Bộ công cụ căn chỉnh trực quan:** Phóng to/thu nhỏ (Zoom), kéo pan, xoay 90 độ, chỉnh độ sáng và độ tương phản ngay trên trình duyệt.
+* **Nạp thiết bị siêu tốc:** Phân mảnh dữ liệu theo chuẩn ATT MTU 180 bytes để truyền tải ổn định và kích hoạt làm mới màn hình.`,
+  thumbnail: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1200',
+  downloadUrl: 'https://bctoiws0902.github.io/sent_pic_to_eink/',
+  demoUrl: 'https://bctoiws0902.github.io/sent_pic_to_eink/',
+  version: '1.0.0',
+  createdAt: new Date()
+};
+
 const ProjectDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -29,6 +51,11 @@ const ProjectDetail = () => {
   useEffect(() => {
     const fetchProject = async () => {
       try {
+        if (id === 'aesl0213-eink-ble') {
+          setProject(FALLBACK_EINK_PROJECT);
+          setLoading(false);
+          return;
+        }
         const docRef = doc(db, 'projects', id);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
@@ -38,6 +65,11 @@ const ProjectDetail = () => {
         }
       } catch (err) {
         console.error(err);
+        if (id === 'aesl0213-eink-ble') {
+          setProject(FALLBACK_EINK_PROJECT);
+        } else {
+          navigate('/showcase');
+        }
       } finally {
         setLoading(false);
       }
@@ -56,14 +88,14 @@ const ProjectDetail = () => {
         downloadCount: increment(1)
       });
 
-      const finalUrl = project.downloadUrl;
+      const finalUrl = project.demoUrl || project.downloadUrl;
       if (finalUrl) {
         window.open(finalUrl, '_blank');
       }
 
       setProject(prev => ({ ...prev, downloadCount: (prev.downloadCount || 0) + 1 }));
     } catch (err) {
-      alert("Lỗi khi tải xuống: " + err.message);
+      alert("Lỗi khi mở ứng dụng: " + err.message);
     } finally {
       setTimeout(() => setDownloading(false), 2000);
     }
@@ -91,7 +123,7 @@ const ProjectDetail = () => {
         </motion.button>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '3rem' }} className="project-detail-grid">
-          {}
+          {/* Main Content */}
           <motion.main
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -122,7 +154,7 @@ const ProjectDetail = () => {
                 <Tag size={14} /> Version {project.version || '1.0.0'}
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#10b981' }}>
-                <Download size={14} /> {project.downloadCount || 0} lượt tải
+                <Download size={14} /> {project.downloadCount || 0} lượt truy cập
               </span>
             </div>
 
@@ -135,7 +167,7 @@ const ProjectDetail = () => {
             </div>
           </motion.main>
 
-          {}
+          {/* Sidebar Info */}
           <motion.aside
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -162,7 +194,7 @@ const ProjectDetail = () => {
                   <ShieldCheck size={18} /> AN TOÀN & BẢO MẬT
                 </div>
                 <p style={{ fontSize: '0.8rem', opacity: 0.7, margin: 0 }}>
-                  Phần mềm đã được kiểm tra và xác thực bởi hệ thống IRIS Core.
+                  Phần mềm đã được kiểm tra và xác thực bởi hệ thống BCT Studio.
                 </p>
               </div>
 
@@ -180,9 +212,10 @@ const ProjectDetail = () => {
                   transition: 'all 0.3s ease'
                 }}
               >
-                {downloading ? 'ĐANG KHỞI TẠO...' : (
+                {downloading ? 'ĐANG KẾT NỐI...' : (
                   <>
-                    <Download size={20} /> TẢI XUỐNG NGAY
+                    {project.demoUrl ? <ExternalLink size={20} /> : <Download size={20} />}
+                    {project.demoUrl ? 'TRUY CẬP ỨNG DỤNG' : 'TẢI XUỐNG NGAY'}
                   </>
                 )}
               </button>

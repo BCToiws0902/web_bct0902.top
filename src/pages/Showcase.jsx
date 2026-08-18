@@ -28,10 +28,25 @@ const GithubIcon = ({ size = 16 }) => (
   </svg>
 );
 
+const DEFAULT_SHOWCASE_PROJECTS = [
+  {
+    id: 'aesl0213-eink-ble',
+    title: 'AESL0213 E-Ink BLE',
+    category: 'IoT / Web Bluetooth',
+    tags: ['Web BLE', 'E-Ink 122x250', 'nRF52811', 'Floyd-Steinberg'],
+    description: 'Ứng dụng web điều khiển và nạp ảnh 3 màu (Đen, Trắng, Đỏ) lên màn hình mực điện tử AESL0213 qua giao thức Bluetooth Low Energy (Web BLE).',
+    thumbnail: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=600',
+    demoUrl: 'https://bctoiws0902.github.io/sent_pic_to_eink/',
+    downloadUrl: 'https://bctoiws0902.github.io/sent_pic_to_eink/',
+    version: '1.0.0',
+    createdAt: new Date().toISOString()
+  }
+];
+
 const Showcase = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [projects, setProjects] = React.useState([]);
+  const [projects, setProjects] = React.useState(DEFAULT_SHOWCASE_PROJECTS);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -39,9 +54,14 @@ const Showcase = () => {
       try {
         const q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
         const snapshot = await getDocs(q);
-        setProjects(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        if (!snapshot.empty) {
+          setProjects(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        } else {
+          setProjects(DEFAULT_SHOWCASE_PROJECTS);
+        }
       } catch (err) {
         console.error(err);
+        setProjects(DEFAULT_SHOWCASE_PROJECTS);
       } finally {
         setLoading(false);
       }
