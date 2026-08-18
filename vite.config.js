@@ -9,10 +9,14 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
           'vendor-animation': ['framer-motion'],
           'vendor-icons': ['lucide-react'],
-          'vendor-i18n': ['i18next', 'react-i18next']
+          'vendor-i18n': ['i18next', 'react-i18next'],
+          'vendor-markdown': ['react-markdown', 'remark-gfm'],
+          'vendor-syntax': ['react-syntax-highlighter'],
+          'vendor-auth': ['otpauth', 'qrcode.react']
         }
       }
     }

@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloud, FileText, CheckCircle, AlertCircle, Settings, Layout, Image as ImageIcon, Check, Save, X, Trophy, Download, Play, Pause, CircleStop, Trash2, QrCode, Copy, User, Search, RotateCcw } from 'lucide-react';
-import mammoth from 'mammoth';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
@@ -396,6 +395,8 @@ const QuizMaker = () => {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
+      // Dynamically import mammoth on-demand only when uploading word file
+      const { default: mammoth } = await import('mammoth');
       // Use convertToHtml to preserve <strong> and <b> tags for bold answers
       const result = await mammoth.convertToHtml({ arrayBuffer });
       const htmlText = result.value;
