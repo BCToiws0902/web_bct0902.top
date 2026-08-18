@@ -303,6 +303,9 @@ const AdminDashboard = () => {
     if (!original) return current;
     const diff = {};
 
+    if (JSON.stringify(original.general || {}) !== JSON.stringify(current.general || {})) {
+      diff.general = current.general || {};
+    }
     if (JSON.stringify(original.appearance || {}) !== JSON.stringify(current.appearance || {})) {
       diff.appearance = current.appearance || {};
     }
@@ -550,42 +553,33 @@ const AdminDashboard = () => {
                     <ImageIcon size={18} /> LOGO VÀ NHẬN DIỆN THƯƠNG HIỆU
                   </div>
                   
-                  <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
                     <div style={{ width: '80px', height: '80px', background: '#ffffff', borderRadius: '16px', border: '1px solid var(--apple-border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                      <img src={localConfig.general?.logoUrl || '/logobct.png'} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      <img src={localConfig.appearance?.logoUrl || localConfig.general?.logoUrl || '/logobct.png'} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                     <div style={{ display: 'flex', gap: '0.6rem' }}>
                       <label className="btn-ghost" style={{ cursor: 'pointer' }}>
                         <Upload size={15} />
                         <span>Tải Logo Mới</span>
-                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, (res) => updateNested('general', 'logoUrl', res), 1)} />
+                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, (res) => {
+                          updateNested('appearance', 'logoUrl', res);
+                          updateNested('general', 'logoUrl', res);
+                        }, 1)} />
                       </label>
-                      {localConfig.general?.logoUrl && (
-                        <button className="btn-ghost" onClick={() => handleReAdjust(localConfig.general.logoUrl, (res) => updateNested('general', 'logoUrl', res), 1)}>
+                      {(localConfig.appearance?.logoUrl || localConfig.general?.logoUrl) && (
+                        <button className="btn-ghost" onClick={() => handleReAdjust(localConfig.appearance?.logoUrl || localConfig.general?.logoUrl, (res) => {
+                          updateNested('appearance', 'logoUrl', res);
+                          updateNested('general', 'logoUrl', res);
+                        }, 1)}>
                           <Crop size={15} /> Căn Chỉnh
                         </button>
                       )}
                     </div>
                   </div>
 
-                  <div className="form-group">
-                    <label>Tiêu Đề Trang Web (Site Title)</label>
-                    <input type="text" className="admin-input" value={localConfig.general?.siteTitle || ''} onChange={(e) => updateNested('general', 'siteTitle', e.target.value)} />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Tên Miền Mặc Định (Domain)</label>
-                    <input type="text" className="admin-input" value={localConfig.general?.domain || ''} onChange={(e) => updateNested('general', 'domain', e.target.value)} />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Từ Khóa SEO (Keywords)</label>
-                    <input type="text" className="admin-input" value={localConfig.general?.keywords || ''} onChange={(e) => updateNested('general', 'keywords', e.target.value)} />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Mô Tả Trang Web (Meta Description)</label>
-                    <textarea className="admin-textarea" value={localConfig.general?.description || ''} onChange={(e) => updateNested('general', 'description', e.target.value)} />
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Tên Thương Hiệu / Tiêu Đề (Site Title)</label>
+                    <input type="text" className="admin-input" value={localConfig.general?.siteTitle || ''} onChange={(e) => updateNested('general', 'siteTitle', e.target.value)} placeholder="BCT0902 Studio" />
                   </div>
                 </div>
 
