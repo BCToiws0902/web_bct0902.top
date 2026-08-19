@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Settings, 
-  Globe, 
-  Palette, 
-  FileText, 
-  Plus, 
-  Trash2, 
-  Save, 
+import {
+  Settings,
+  Globe,
+  Palette,
+  FileText,
+  Plus,
+  Trash2,
+  Save,
   CheckCircle,
   ExternalLink,
   Users,
@@ -22,8 +22,7 @@ import {
   Package,
   Menu,
   Lock,
-  Film,
-  Database
+  Film
 } from 'lucide-react';
 
 import { db } from '../../firebase';
@@ -57,12 +56,12 @@ const AdminDashboard = () => {
   const [localConfig, setLocalConfig] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState('');
-  const [adjustmentModal, setAdjustmentModal] = useState({ isOpen: false, src: '', callback: null, aspect: 16/9 });
+  const [adjustmentModal, setAdjustmentModal] = useState({ isOpen: false, src: '', callback: null, aspect: 16 / 9 });
   const [activeIconPickerIdx, setActiveIconPickerIdx] = useState(null);
   const [activeAppLogoPickerIdx, setActiveAppLogoPickerIdx] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
-  
+
   // Users state
   const [usersList, setUsersList] = useState([]);
   const [userModal, setUserModal] = useState({ isOpen: false, mode: 'add', data: {} });
@@ -332,7 +331,7 @@ const AdminDashboard = () => {
       diff.apps = current.apps || [];
     }
     if (JSON.stringify(original.content?.quotes || []) !== JSON.stringify(current.content?.quotes || []) ||
-        original.content?.filmStripSpeed !== current.content?.filmStripSpeed) {
+      original.content?.filmStripSpeed !== current.content?.filmStripSpeed) {
       diff.content = {
         quotes: current.content?.quotes || [],
         filmStripSpeed: current.content?.filmStripSpeed || 45
@@ -371,47 +370,6 @@ const AdminDashboard = () => {
     }
   };
   handleSaveRef.current = handleSave;
-
-  const handleSeedDatabase = async () => {
-    if (!window.confirm('Bạn có muốn nạp và đồng bộ toàn bộ dữ liệu gốc (15 ứng dụng, 10 danh ngôn, 5 mạng xã hội và dự án E-ink) vào Firebase Firestore không?')) return;
-    setIsSaving(true);
-    try {
-      await Promise.all([
-        setDoc(doc(db, 'site_config', 'main_config'), {
-          social_links: DEFAULT_CONFIG.social_links,
-          apps: DEFAULT_CONFIG.apps,
-          content: {
-            quotes: DEFAULT_CONFIG.content.quotes,
-            filmStripSpeed: DEFAULT_CONFIG.content.filmStripSpeed
-          },
-          appearance: DEFAULT_CONFIG.appearance,
-          maintenance: DEFAULT_CONFIG.maintenance
-        }, { merge: true }),
-        setDoc(doc(db, 'system', 'memories'), {
-          filmStripImages: DEFAULT_CONFIG.content.filmStripImages
-        }, { merge: true }),
-        setDoc(doc(db, 'projects', 'aesl0213-eink-ble'), {
-          id: 'aesl0213-eink-ble',
-          title: 'AESL0213 E-Ink BLE',
-          category: 'IoT / Web Bluetooth',
-          tags: ['Web BLE', 'E-Ink 122x250', 'nRF52811', 'Floyd-Steinberg'],
-          description: 'Ứng dụng web điều khiển và nạp ảnh 3 màu (Đen, Trắng, Đỏ) lên màn hình mực điện tử AESL0213 qua giao thức Bluetooth Low Energy (Web BLE).',
-          demoUrl: 'https://bctoiws0902.github.io/sent_pic_to_eink/',
-          githubUrl: 'https://github.com/BCToiws0902/sent_pic_to_eink',
-          thumbnail: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=600',
-          order: 1,
-          createdAt: new Date().toISOString()
-        }, { merge: true })
-      ]);
-      setLocalConfig(JSON.parse(JSON.stringify(DEFAULT_CONFIG)));
-      fetchProjects();
-      showToast('Đã nạp thành công toàn bộ dữ liệu gốc vào Firestore Database!');
-    } catch (err) {
-      alert('Lỗi nạp dữ liệu: ' + err.message);
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const updateNested = (category, field, value) => {
     setLocalConfig(prev => {
@@ -453,7 +411,7 @@ const AdminDashboard = () => {
     });
   };
 
-  const handleFileUpload = (e, callback, aspect = 16/9) => {
+  const handleFileUpload = (e, callback, aspect = 16 / 9) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
@@ -476,7 +434,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleReAdjust = (src, callback, aspect = 16/9) => {
+  const handleReAdjust = (src, callback, aspect = 16 / 9) => {
     setAdjustmentModal({
       isOpen: true,
       src,
@@ -493,7 +451,7 @@ const AdminDashboard = () => {
     img.src = adjustmentModal.src;
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const targetAspect = adjustmentModal.aspect || 16/9;
+      const targetAspect = adjustmentModal.aspect || 16 / 9;
       const targetWidth = 800;
       const targetHeight = targetWidth / targetAspect;
 
@@ -514,7 +472,7 @@ const AdminDashboard = () => {
       if (adjustmentModal.callback) {
         adjustmentModal.callback(finalBase64);
       }
-      setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16/9 });
+      setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16 / 9 });
     };
   };
 
@@ -585,16 +543,6 @@ const AdminDashboard = () => {
           </div>
 
           <div className="admin-header-actions">
-            <button 
-              type="button" 
-              className="btn-ghost" 
-              onClick={handleSeedDatabase} 
-              disabled={isSaving}
-              title="Đồng bộ toàn bộ dữ liệu gốc (15 ứng dụng, 10 danh ngôn, 8 ảnh dải phim, 5 mạng xã hội và dự án E-ink) vào Firebase Firestore Database"
-            >
-              <Database size={15} />
-              <span>Nạp Dữ Liệu Gốc</span>
-            </button>
             <a href="/" target="_blank" rel="noopener noreferrer" className="btn-ghost">
               <ExternalLink size={15} />
               <span>Xem Web</span>
@@ -616,7 +564,7 @@ const AdminDashboard = () => {
                   <div className="config-section-title">
                     <ImageIcon size={18} /> LOGO VÀ NHẬN DIỆN THƯƠNG HIỆU
                   </div>
-                  
+
                   <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
                     <div style={{ width: '80px', height: '80px', background: '#ffffff', borderRadius: '16px', border: '1px solid var(--apple-border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                       <img src={localConfig.appearance?.logoUrl || localConfig.general?.logoUrl || '/logobct.png'} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -861,11 +809,11 @@ const AdminDashboard = () => {
 
                   <div className="form-group">
                     <label>Tốc Độ Cuộn Phim (Giây)</label>
-                    <input 
-                      type="number" 
-                      className="admin-input" 
-                      value={localConfig.content?.filmStripSpeed || 45} 
-                      onChange={(e) => updateNested('content', 'filmStripSpeed', Number(e.target.value))} 
+                    <input
+                      type="number"
+                      className="admin-input"
+                      value={localConfig.content?.filmStripSpeed || 45}
+                      onChange={(e) => updateNested('content', 'filmStripSpeed', Number(e.target.value))}
                     />
                   </div>
 
@@ -875,15 +823,15 @@ const AdminDashboard = () => {
                     </label>
                     <label className="add-btn" style={{ cursor: 'pointer' }}>
                       <Upload size={15} /> Thêm Khung Hình
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        style={{ display: 'none' }} 
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
                         onChange={(e) => handleFileUpload(e, (res) => {
                           const currentImages = [...(localConfig.content?.filmStripImages || [])];
                           currentImages.push(res);
                           updateNested('content', 'filmStripImages', currentImages);
-                        }, 16/9)} 
+                        }, 16 / 9)}
                       />
                     </label>
                   </div>
@@ -895,19 +843,19 @@ const AdminDashboard = () => {
                           <img src={imgUrl} alt={`Filmstrip ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: '#ffffff' }}>
-                          <button 
-                            className="btn-ghost" 
-                            style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }} 
+                          <button
+                            className="btn-ghost"
+                            style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
                             onClick={() => handleReAdjust(imgUrl, (res) => {
                               const currentImages = [...(localConfig.content?.filmStripImages || [])];
                               currentImages[idx] = res;
                               updateNested('content', 'filmStripImages', currentImages);
-                            }, 16/9)}
+                            }, 16 / 9)}
                           >
                             <Crop size={13} /> Sửa
                           </button>
-                          <button 
-                            className="delete-btn" 
+                          <button
+                            className="delete-btn"
                             onClick={() => {
                               const currentImages = (localConfig.content?.filmStripImages || []).filter((_, i) => i !== idx);
                               updateNested('content', 'filmStripImages', currentImages);
@@ -933,9 +881,9 @@ const AdminDashboard = () => {
                       </p>
                     </div>
                     <button className="add-btn" onClick={() => {
-                       const newApps = [...(localConfig.apps || [])];
-                       newApps.push({ name: '', color: '#0071e3', iconUrl: '' });
-                       setLocalConfig(prev => ({ ...prev, apps: newApps }));
+                      const newApps = [...(localConfig.apps || [])];
+                      newApps.push({ name: '', color: '#0071e3', iconUrl: '' });
+                      setLocalConfig(prev => ({ ...prev, apps: newApps }));
                     }}>
                       <Plus size={15} /> Thêm Ứng Dụng
                     </button>
@@ -967,12 +915,12 @@ const AdminDashboard = () => {
                                     className="social-preset-btn"
                                     onClick={() => {
                                       const newApps = [...localConfig.apps];
-                                      newApps[idx] = { 
-                                        ...newApps[idx], 
-                                        name: newApps[idx].name || preset.name, 
-                                        color: preset.color, 
-                                        iconKey: preset.name, 
-                                        iconUrl: '' 
+                                      newApps[idx] = {
+                                        ...newApps[idx],
+                                        name: newApps[idx].name || preset.name,
+                                        color: preset.color,
+                                        iconKey: preset.name,
+                                        iconUrl: ''
                                       };
                                       setLocalConfig(prev => ({ ...prev, apps: newApps }));
                                       setActiveAppLogoPickerIdx(null);
@@ -1008,10 +956,10 @@ const AdminDashboard = () => {
                         </div>
 
                         {app.iconUrl && (
-                          <button 
+                          <button
                             type="button"
-                            className="btn-ghost" 
-                            style={{ padding: '0.45rem', width: '36px', height: '36px', minHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+                            className="btn-ghost"
+                            style={{ padding: '0.45rem', width: '36px', height: '36px', minHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             onClick={() => handleReAdjust(app.iconUrl, (res) => {
                               const newApps = [...(localConfig.apps || [])];
                               newApps[idx] = { ...newApps[idx], iconUrl: res };
@@ -1023,22 +971,22 @@ const AdminDashboard = () => {
                           </button>
                         )}
 
-                        <input 
-                          type="text" 
-                          className="admin-input" 
-                          placeholder="Tên ứng dụng (vd: Antigravity, GitHub, VS Code...)" 
-                          value={app.name || ''} 
+                        <input
+                          type="text"
+                          className="admin-input"
+                          placeholder="Tên ứng dụng (vd: Antigravity, GitHub, VS Code...)"
+                          value={app.name || ''}
                           style={{ flex: 1 }}
                           onChange={(e) => {
                             const newApps = [...(localConfig.apps || [])];
                             newApps[idx] = { ...newApps[idx], name: e.target.value };
                             setLocalConfig(prev => ({ ...prev, apps: newApps }));
-                          }} 
+                          }}
                         />
-                        
-                        <button 
+
+                        <button
                           type="button"
-                          className="delete-btn" 
+                          className="delete-btn"
                           onClick={() => {
                             const newApps = (localConfig.apps || []).filter((_, i) => i !== idx);
                             setLocalConfig(prev => ({ ...prev, apps: newApps }));
@@ -1076,19 +1024,19 @@ const AdminDashboard = () => {
                     {(localConfig.content?.quotes || []).map((quote, idx) => (
                       <div key={idx} className="quote-item-card">
                         <span className="quote-index">{String(idx + 1).padStart(2, '0')}</span>
-                        <textarea 
+                        <textarea
                           className="quote-edit-input"
-                          value={quote} 
+                          value={quote}
                           onChange={(e) => {
                             const newQuotes = [...(localConfig.content?.quotes || [])];
                             newQuotes[idx] = e.target.value;
                             updateNested('content', 'quotes', newQuotes);
-                          }} 
-                          rows={2} 
+                          }}
+                          rows={2}
                           aria-label={`Danh ngôn số ${idx + 1}`}
                         />
-                        <button 
-                          className="delete-btn" 
+                        <button
+                          className="delete-btn"
                           onClick={() => {
                             const newQuotes = (localConfig.content?.quotes || []).filter((_, i) => i !== idx);
                             updateNested('content', 'quotes', newQuotes);
@@ -1317,19 +1265,19 @@ const AdminDashboard = () => {
 
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <div className="filter-pills">
-                        <button 
+                        <button
                           className={`filter-pill ${analyticsFilter === 'all' ? 'active' : ''}`}
                           onClick={() => { setAnalyticsFilter('all'); setTrafficPage(1); }}
                         >
                           Tất cả ({groupedVisitors.length})
                         </button>
-                        <button 
+                        <button
                           className={`filter-pill ${analyticsFilter === 'desktop' ? 'active' : ''}`}
                           onClick={() => { setAnalyticsFilter('desktop'); setTrafficPage(1); }}
                         >
                           Desktop 💻 ({groupedVisitors.filter(v => !v.isMobile).length})
                         </button>
-                        <button 
+                        <button
                           className={`filter-pill ${analyticsFilter === 'mobile' ? 'active' : ''}`}
                           onClick={() => { setAnalyticsFilter('mobile'); setTrafficPage(1); }}
                         >
@@ -1394,8 +1342,8 @@ const AdminDashboard = () => {
                               Đang hiển thị {((trafficPage - 1) * TRAFFIC_PER_PAGE) + 1}–{Math.min(trafficPage * TRAFFIC_PER_PAGE, filteredVisitors.length)} trong tổng số {filteredVisitors.length} khách
                             </div>
                             <div className="pagination-controls">
-                              <button 
-                                className="btn-ghost" 
+                              <button
+                                className="btn-ghost"
                                 style={{ padding: '0.35rem 0.85rem', fontSize: '0.78rem' }}
                                 disabled={trafficPage === 1}
                                 onClick={() => setTrafficPage(p => Math.max(1, p - 1))}
@@ -1417,8 +1365,8 @@ const AdminDashboard = () => {
                                   );
                                 })}
                               </div>
-                              <button 
-                                className="btn-ghost" 
+                              <button
+                                className="btn-ghost"
                                 style={{ padding: '0.35rem 0.85rem', fontSize: '0.78rem' }}
                                 disabled={trafficPage === totalTrafficPages}
                                 onClick={() => setTrafficPage(p => Math.min(totalTrafficPages, p + 1))}
@@ -1444,21 +1392,21 @@ const AdminDashboard = () => {
           <div className="admin-modal-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <div className="config-section-title" style={{ margin: 0 }}>CĂN CHỈNH KHUNG HÌNH</div>
-              <button className="btn-ghost" style={{ padding: '0.4rem' }} onClick={() => setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16/9 })}>
+              <button className="btn-ghost" style={{ padding: '0.4rem' }} onClick={() => setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16 / 9 })}>
                 <X size={16} />
               </button>
             </div>
 
             <div style={{ width: '100%', height: '260px', background: '#f5f5f7', borderRadius: '12px', border: '1px solid var(--apple-border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
-              <img 
-                src={adjustmentModal.src} 
-                alt="Preview" 
-                style={{ 
-                  maxWidth: '100%', 
-                  maxHeight: '100%', 
-                  transform: `scale(${zoom}) translate(${dragPos.x}px, ${dragPos.y}px)`, 
-                  transition: 'transform 0.1s' 
-                }} 
+              <img
+                src={adjustmentModal.src}
+                alt="Preview"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  transform: `scale(${zoom}) translate(${dragPos.x}px, ${dragPos.y}px)`,
+                  transition: 'transform 0.1s'
+                }}
               />
             </div>
 
@@ -1468,7 +1416,7 @@ const AdminDashboard = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-              <button className="btn-ghost" onClick={() => setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16/9 })}>Hủy</button>
+              <button className="btn-ghost" onClick={() => setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16 / 9 })}>Hủy</button>
               <button className="save-btn" onClick={confirmCrop}>Áp Dụng</button>
             </div>
           </div>
@@ -1524,7 +1472,7 @@ const AdminDashboard = () => {
                 )}
                 <label className="btn-ghost" style={{ cursor: 'pointer' }}>
                   <Upload size={14} /> Tải Ảnh
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileUpload(e, res => setProjectModal(p => ({ ...p, data: { ...p.data, image: res, thumbnail: res } })), 16/9)} />
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileUpload(e, res => setProjectModal(p => ({ ...p, data: { ...p.data, image: res, thumbnail: res } })), 16 / 9)} />
                 </label>
               </div>
             </div>
