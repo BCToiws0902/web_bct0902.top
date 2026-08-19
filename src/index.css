@@ -39,19 +39,19 @@
 }
 
 [data-theme='light'] {
-  --bg-primary: #f1f5f9;
+  --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
-  --bg-glass: rgba(255, 255, 255, 0.7);
-  --bg-glass-border: rgba(0, 0, 0, 0.05);
+  --bg-glass: rgba(255, 255, 255, 0.85);
+  --bg-glass-border: rgba(0, 0, 0, 0.08);
 
   --text-primary: #0f172a;
   --text-secondary: #334155;
   --text-muted: #64748b;
 
-  --accent-main: #2563eb; 
-  --accent-secondary: #7c3aed; 
-  --accent-gold: #d97706; 
-  --accent-glow: rgba(37, 99, 235, 0.3);
+  --accent-main: #ea580c; 
+  --accent-secondary: #f59e0b; 
+  --accent-gold: #f59e0b; 
+  --accent-glow: rgba(234, 88, 12, 0.25);
 
   --grid-color: rgba(0, 0, 0, 0.05);
 }
@@ -167,10 +167,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 [data-theme='light'] .btn-primary {
-  color: #fff;
+  background: var(--accent-main);
+  color: #ffffff;
 }
 [data-theme='light'] .btn-primary:hover {
-  background: var(--text-primary);
+  background: #c2410c;
 }
 
 .btn-secondary {

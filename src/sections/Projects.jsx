@@ -1,40 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { ExternalLink, GitBranch } from 'lucide-react';
+import { getDocs, collection } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const Projects = () => {
   const { t } = useTranslation();
+  const [projects, setProjects] = useState([]);
 
-  const projects = [
-    {
-      id: 'eink',
-      title: "AESL0213 E-Ink BLE",
-      description: "Ứng dụng web điều khiển và nạp ảnh 3 màu (Đen, Trắng, Đỏ) lên màn hình mực điện tử AESL0213 qua giao thức Bluetooth Low Energy (Web BLE).",
-      tech: ["Web Bluetooth", "E-Ink 122x250", "nRF52811", "Floyd-Steinberg"],
-      color: "var(--accent-main)",
-      demoUrl: "https://bctoiws0902.github.io/sent_pic_to_eink/",
-      githubUrl: "https://github.com/BCToiws0902/sent_pic_to_eink"
-    },
-    {
-      id: 1,
-      title: "CyberSystem OS",
-      description: "A highly interactive web-based operating system visualization using React and Framer Motion.",
-      tech: ["React", "Framer", "Zustand"],
-      color: "var(--accent-secondary)",
-      demoUrl: "https://github.com/BCToiws0902",
-      githubUrl: "https://github.com/BCToiws0902"
-    },
-    {
-      id: 2,
-      title: "Neon E-commerce",
-      description: "Full-stack e-commerce platform with dark mode default, Stripe integration, and real-time inventory.",
-      tech: ["Next.js", "Node.js", "MongoDB"],
-      color: "#f59e0b",
-      demoUrl: "https://github.com/BCToiws0902",
-      githubUrl: "https://github.com/BCToiws0902"
-    }
-  ];
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'projects'));
+        const projs = [];
+        querySnapshot.forEach((docSnap) => {
+          projs.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        projs.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+        setProjects(projs);
+      } catch (err) {
+        console.error("Error fetching projects:", err);
+      }
+    };
+    fetchProjects();
+  }, []);
 
   return (
     <section id="projects" className="container" style={{ padding: '8rem 2rem' }}>
@@ -74,8 +64,12 @@ const Projects = () => {
               background: project.color
             }} />
 
-            <div style={{ aspectRatio: '16/9', background: 'var(--bg-primary)', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid var(--bg-glass-border)' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>[ {project.title} ]</span>
+            <div style={{ aspectRatio: '16/9', background: 'var(--bg-primary)', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid var(--bg-glass-border)', overflow: 'hidden' }}>
+              {(project.thumbnail || project.image) ? (
+                <img src={project.thumbnail || project.image} alt={project.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>[ {project.title} ]</span>
+              )}
             </div>
 
             <div>
@@ -87,8 +81,8 @@ const Projects = () => {
               </p>
               
               <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-                {project.tech.map((tItem, i) => (
-                  <span key={i} style={{ color: project.color, fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>
+                {(Array.isArray(project.tags) ? project.tags : (project.tech || [])).map((tItem, i) => (
+                  <span key={i} style={{ color: project.color || 'var(--accent-main)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>
                     {tItem}
                   </span>
                 ))}

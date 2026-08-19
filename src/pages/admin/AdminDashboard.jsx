@@ -200,15 +200,15 @@ const AdminDashboard = () => {
 
   const fetchProjects = async () => {
     try {
-      const q = query(collection(db, 'projects'), orderBy('order', 'asc'));
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await getDocs(collection(db, 'projects'));
       const projs = [];
-      querySnapshot.forEach((doc) => {
-        projs.push({ id: doc.id, ...doc.data() });
+      querySnapshot.forEach((docSnap) => {
+        projs.push({ id: docSnap.id, ...docSnap.data() });
       });
+      projs.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
       setProjectsList(projs);
     } catch (err) {
-      console.error(err);
+      console.error("fetchProjects error:", err);
     }
   };
 
@@ -244,11 +244,15 @@ const AdminDashboard = () => {
       if (typeof data.tags === 'string') {
         data.tags = data.tags.split(',').map(t => t.trim()).filter(Boolean);
       }
-      const targetId = projectModal.mode === 'add' ? (data.slug || Date.now().toString()) : data.id;
+      const targetId = projectModal.mode === 'add' ? (data.slug || 'proj_' + Date.now().toString(36)) : data.id;
       await setDoc(doc(db, 'projects', targetId), {
         ...data,
         id: targetId,
-        order: Number(data.order) || 0
+        thumbnail: data.thumbnail || data.image || '',
+        demoUrl: data.demoUrl || '',
+        githubUrl: data.githubUrl || '',
+        order: Number(data.order) || 0,
+        createdAt: data.createdAt || new Date().toISOString()
       }, { merge: true });
 
       setUserModal({ isOpen: false, mode: 'add', data: {} });
@@ -1442,14 +1446,24 @@ const AdminDashboard = () => {
             </div>
 
             <div className="form-group">
+              <label>Đường Dẫn Live Demo / Website (Demo URL)</label>
+              <input type="url" className="admin-input" placeholder="https://bctoiws0902.github.io/..." value={projectModal.data.demoUrl || ''} onChange={e => setProjectModal(p => ({ ...p, data: { ...p.data, demoUrl: e.target.value } }))} />
+            </div>
+
+            <div className="form-group">
+              <label>Đường Dẫn Mã Nguồn GitHub (GitHub URL)</label>
+              <input type="url" className="admin-input" placeholder="https://github.com/..." value={projectModal.data.githubUrl || ''} onChange={e => setProjectModal(p => ({ ...p, data: { ...p.data, githubUrl: e.target.value } }))} />
+            </div>
+
+            <div className="form-group">
               <label>Ảnh Bìa Dự Án</label>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                {projectModal.data.image && (
-                  <img src={projectModal.data.image} alt="Preview" style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover' }} />
+                {(projectModal.data.image || projectModal.data.thumbnail) && (
+                  <img src={projectModal.data.image || projectModal.data.thumbnail} alt="Preview" style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover' }} />
                 )}
                 <label className="btn-ghost" style={{ cursor: 'pointer' }}>
                   <Upload size={14} /> Tải Ảnh
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileUpload(e, res => setProjectModal(p => ({ ...p, data: { ...p.data, image: res } })), 16/9)} />
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileUpload(e, res => setProjectModal(p => ({ ...p, data: { ...p.data, image: res, thumbnail: res } })), 16/9)} />
                 </label>
               </div>
             </div>
