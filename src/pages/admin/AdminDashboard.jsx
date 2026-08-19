@@ -166,6 +166,14 @@ const AdminDashboard = () => {
     });
   }, [analyticsData]);
 
+  const activeNowCount = useMemo(() => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    return groupedVisitors.filter(v => {
+      const lastSec = v.lastTimestamp?.seconds || (v.lastTimestamp ? Math.floor(new Date(v.lastTimestamp).getTime() / 1000) : 0);
+      return (nowSec - lastSec) <= 300; // Hoạt động trong 5 phút gần đây
+    }).length;
+  }, [groupedVisitors]);
+
   const filteredVisitors = useMemo(() => {
     if (analyticsFilter === 'desktop') return groupedVisitors.filter(v => !v.isMobile);
     if (analyticsFilter === 'mobile') return groupedVisitors.filter(v => v.isMobile);
@@ -1274,23 +1282,24 @@ const AdminDashboard = () => {
                 {/* Metric Summary Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
                   <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>LƯỢT TRUY CẬP GẦN ĐÂY</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }} />
+                      LƯỢT TRUY CẬP HIỆN TẠI
+                    </div>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#10b981', letterSpacing: '-0.03em' }}>{activeNowCount}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Hoạt động trong 5 phút gần đây</div>
+                  </div>
+
+                  <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>TỔNG LƯỢT TRUY CẬP</div>
                     <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--apple-text-primary)', letterSpacing: '-0.03em' }}>{analyticsData.length}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Sự kiện theo dõi trực tiếp</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Tổng số sự kiện xem trang</div>
                   </div>
 
                   <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
                     <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>THIẾT BỊ DUY NHẤT</div>
                     <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--apple-blue)', letterSpacing: '-0.03em' }}>{groupedVisitors.length}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Gom nhóm theo người dùng/phiên</div>
-                  </div>
-
-                  <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>TỶ LỆ DI ĐỘNG</div>
-                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#f59e0b', letterSpacing: '-0.03em' }}>
-                      {groupedVisitors.length ? `${Math.round((groupedVisitors.filter(v => v.isMobile).length / groupedVisitors.length) * 100)}%` : '0%'}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Tỷ lệ người dùng Mobile/Tablet</div>
                   </div>
                 </div>
 
