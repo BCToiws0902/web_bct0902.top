@@ -373,7 +373,7 @@ const AdminDashboard = () => {
   handleSaveRef.current = handleSave;
 
   const handleSeedDatabase = async () => {
-    if (!window.confirm('Bạn có muốn nạp và đồng bộ toàn bộ dữ liệu gốc (15 ứng dụng, 10 danh ngôn, 8 ảnh dải phim, 5 mạng xã hội và dự án E-ink) vào Firebase Firestore không?')) return;
+    if (!window.confirm('Bạn có muốn nạp và đồng bộ toàn bộ dữ liệu gốc (15 ứng dụng, 10 danh ngôn, 5 mạng xã hội và dự án E-ink) vào Firebase Firestore không?')) return;
     setIsSaving(true);
     try {
       await Promise.all([

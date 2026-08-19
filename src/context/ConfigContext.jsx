@@ -35,16 +35,7 @@ export const DEFAULT_CONFIG = {
       "Tôi chỉ có một sự ham muốn, ham muốn tột bậc, là làm sao cho nước ta được độc lập toàn diện. - Hồ Chí Minh"
     ],
     filmStripSpeed: 45,
-    filmStripImages: [
-      "/film/style_korean_1775962199527.png",
-      "/film/style_office_1775962215135.png",
-      "/film/style_classic_1775962232413.png",
-      "/film/style_landscape_1775962251170.png",
-      "/film/style_gentleman_1775962276045.png",
-      "/film/style_winter_1775962294966.png",
-      "/film/style_korean_1775962199527.png",
-      "/film/style_office_1775962215135.png"
-    ]
+    filmStripImages: []
   },
   apps: [
     { name: "Antigravity", color: "#00d2ff" },
