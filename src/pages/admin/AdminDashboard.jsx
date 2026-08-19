@@ -22,13 +22,14 @@ import {
   Package,
   Menu,
   Lock,
-  Film
+  Film,
+  Database
 } from 'lucide-react';
 
 import { db } from '../../firebase';
 import { doc, setDoc, collection, getDocs, deleteDoc, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
-import { useConfig } from '../../context/ConfigContext';
+import { useConfig, DEFAULT_CONFIG } from '../../context/ConfigContext';
 import SocialIcon from '../../components/SocialIcon';
 import { APP_PRESET_LOGOS, renderAppLogo } from '../../constants/appLogos';
 import { APP_ROUTES } from '../../constants/routes';
@@ -363,6 +364,47 @@ const AdminDashboard = () => {
   };
   handleSaveRef.current = handleSave;
 
+  const handleSeedDatabase = async () => {
+    if (!window.confirm('Bạn có muốn nạp và đồng bộ toàn bộ dữ liệu gốc (15 ứng dụng, 10 danh ngôn, 8 ảnh dải phim, 5 mạng xã hội và dự án E-ink) vào Firebase Firestore không?')) return;
+    setIsSaving(true);
+    try {
+      await Promise.all([
+        setDoc(doc(db, 'site_config', 'main_config'), {
+          social_links: DEFAULT_CONFIG.social_links,
+          apps: DEFAULT_CONFIG.apps,
+          content: {
+            quotes: DEFAULT_CONFIG.content.quotes,
+            filmStripSpeed: DEFAULT_CONFIG.content.filmStripSpeed
+          },
+          appearance: DEFAULT_CONFIG.appearance,
+          maintenance: DEFAULT_CONFIG.maintenance
+        }, { merge: true }),
+        setDoc(doc(db, 'system', 'memories'), {
+          filmStripImages: DEFAULT_CONFIG.content.filmStripImages
+        }, { merge: true }),
+        setDoc(doc(db, 'projects', 'aesl0213-eink-ble'), {
+          id: 'aesl0213-eink-ble',
+          title: 'AESL0213 E-Ink BLE',
+          category: 'IoT / Web Bluetooth',
+          tags: ['Web BLE', 'E-Ink 122x250', 'nRF52811', 'Floyd-Steinberg'],
+          description: 'Ứng dụng web điều khiển và nạp ảnh 3 màu (Đen, Trắng, Đỏ) lên màn hình mực điện tử AESL0213 qua giao thức Bluetooth Low Energy (Web BLE).',
+          demoUrl: 'https://bctoiws0902.github.io/sent_pic_to_eink/',
+          githubUrl: 'https://github.com/BCToiws0902/sent_pic_to_eink',
+          thumbnail: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=600',
+          order: 1,
+          createdAt: new Date().toISOString()
+        }, { merge: true })
+      ]);
+      setLocalConfig(JSON.parse(JSON.stringify(DEFAULT_CONFIG)));
+      fetchProjects();
+      showToast('Đã nạp thành công toàn bộ dữ liệu gốc vào Firestore Database!');
+    } catch (err) {
+      alert('Lỗi nạp dữ liệu: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const updateNested = (category, field, value) => {
     setLocalConfig(prev => {
       const updated = { ...prev };
@@ -535,6 +577,16 @@ const AdminDashboard = () => {
           </div>
 
           <div className="admin-header-actions">
+            <button 
+              type="button" 
+              className="btn-ghost" 
+              onClick={handleSeedDatabase} 
+              disabled={isSaving}
+              title="Đồng bộ toàn bộ dữ liệu gốc (15 ứng dụng, 10 danh ngôn, 8 ảnh dải phim, 5 mạng xã hội và dự án E-ink) vào Firebase Firestore Database"
+            >
+              <Database size={15} />
+              <span>Nạp Dữ Liệu Gốc</span>
+            </button>
             <a href="/" target="_blank" rel="noopener noreferrer" className="btn-ghost">
               <ExternalLink size={15} />
               <span>Xem Web</span>
