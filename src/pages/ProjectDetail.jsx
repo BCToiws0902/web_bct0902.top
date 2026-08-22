@@ -13,6 +13,7 @@ import {
   ShieldCheck, 
   Cpu, 
   ExternalLink,
+  GitBranch,
   ChevronRight
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
@@ -47,26 +48,22 @@ const ProjectDetail = () => {
   }, [id, navigate]);
 
   const handleDownload = async () => {
-    if (!project?.downloadUrl || downloading) return;
+    const targetUrl = project?.demoUrl || project?.downloadUrl || project?.githubUrl;
+    if (!targetUrl || downloading) return;
     
     setDownloading(true);
     try {
-      
       const docRef = doc(db, 'projects', project.id);
       await updateDoc(docRef, {
         downloadCount: increment(1)
-      });
+      }).catch(console.error);
 
-      const finalUrl = project.demoUrl || project.downloadUrl;
-      if (finalUrl) {
-        window.open(finalUrl, '_blank');
-      }
-
-      setProject(prev => ({ ...prev, downloadCount: (prev.downloadCount || 0) + 1 }));
-    } catch (err) {
-      alert("Lỗi khi mở ứng dụng: " + err.message);
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      setProject(prev => ({ ...prev, downloadCount: (prev?.downloadCount || 0) + 1 }));
+    } catch {
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
     } finally {
-      setTimeout(() => setDownloading(false), 2000);
+      setTimeout(() => setDownloading(false), 1000);
     }
   };
 
@@ -188,9 +185,28 @@ const ProjectDetail = () => {
                   </>
                 )}
               </button>
+
+              {project.githubUrl && (
+                <a
+                  href={project.githubUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    width: '100%', padding: '0.9rem', borderRadius: '12px',
+                    background: 'rgba(255,255,255,0.05)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid rgba(255,255,255,0.1)', fontWeight: 600, fontSize: '0.9rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+                    textDecoration: 'none', marginTop: '0.75rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <GitBranch size={16} /> MÃ NGUỒN GITHUB
+                </a>
+              )}
               
-              <p style={{ textAlign: 'center', fontSize: '0.75rem', opacity: 0.5, marginTop: '1rem' }}>
-                Dung lượng ước tính: ~{Math.floor(Math.random() * 50) + 10}MB
+              <p style={{ textAlign: 'center', fontSize: '0.75rem', opacity: 0.6, marginTop: '1rem' }}>
+                {project.demoUrl ? '🌐 Ứng dụng Web chạy trực tiếp trên trình duyệt' : `Dung lượng ước tính: ~${Math.floor(Math.random() * 50) + 10}MB`}
               </p>
             </div>
           </motion.aside>
