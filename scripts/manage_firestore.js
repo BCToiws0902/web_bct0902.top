@@ -105,6 +105,23 @@ async function syncAll() {
   await db.collection('projects').doc('aesl0213-eink-ble').set(projectData, { merge: true });
   console.log('✅ Synchronized project AESL0213 E-Ink BLE with demo & github URLs');
 
+  // 4. Project BCTweaksRepo
+  const project2Data = {
+    id: 'bctweaks-repo',
+    title: 'BCTweaksRepo',
+    category: 'iOS Jailbreak / APT Repository',
+    tags: ['iOS Jailbreak', 'Cydia / Sileo', 'APT Repo', 'Debian Packages', 'iOS 12+'],
+    description: 'Kho lưu trữ (Repository) tinh chỉnh và Tweak iOS dành cho các thiết bị Jailbreak (iOS 12+), tích hợp sẵn các gói .deb tối ưu hóa hệ thống, giao diện và chức năng cho Cydia, Sileo, Zebra.',
+    demoUrl: 'https://bctoiws0902.github.io/tweak_for_ios12/',
+    githubUrl: 'https://github.com/BCToiws0902/tweak_for_ios12',
+    thumbnail: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=800',
+    order: 2,
+    createdAt: new Date().toISOString()
+  };
+
+  await db.collection('projects').doc('bctweaks-repo').set(project2Data, { merge: true });
+  console.log('✅ Synchronized project BCTweaksRepo with repo & github URLs');
+
   console.log('🎉 All Firestore data successfully synchronized!');
 }
 
