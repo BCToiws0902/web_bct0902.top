@@ -61,6 +61,12 @@ const AdminDashboard = () => {
   const [activeAppLogoPickerIdx, setActiveAppLogoPickerIdx] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const previewContainerRef = useRef(null);
+
+  // Homepage sub-tab state
+  const [homepageSubTab, setHomepageSubTab] = useState('filmstrip'); // 'filmstrip' | 'apps' | 'quotes'
 
   // Users state
   const [usersList, setUsersList] = useState([]);
@@ -445,34 +451,88 @@ const AdminDashboard = () => {
     setDragPos({ x: 0, y: 0 });
   };
 
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - dragPos.x, y: e.clientY - dragPos.y });
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    setDragPos({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.touches[0].clientX - dragPos.x,
+        y: e.touches[0].clientY - dragPos.y
+      });
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    setDragPos({
+      x: e.touches[0].clientX - dragStart.x,
+      y: e.touches[0].clientY - dragStart.y
+    });
+  };
+
   const confirmCrop = () => {
     if (!adjustmentModal.src) return;
     const img = new Image();
     img.src = adjustmentModal.src;
     img.onload = () => {
-      const canvas = document.createElement('canvas');
       const targetAspect = adjustmentModal.aspect || 16 / 9;
-      const targetWidth = 800;
-      const targetHeight = targetWidth / targetAspect;
+      const targetWidth = 1200;
+      const targetHeight = Math.round(targetWidth / targetAspect);
 
+      const canvas = document.createElement('canvas');
       canvas.width = targetWidth;
       canvas.height = targetHeight;
       const ctx = canvas.getContext('2d');
 
-      const renderWidth = img.width * zoom;
-      const renderHeight = img.height * zoom;
-      const drawX = (targetWidth - renderWidth) / 2 + (dragPos.x * (targetWidth / 300));
-      const drawY = (targetHeight - renderHeight) / 2 + (dragPos.y * (targetHeight / (300 / targetAspect)));
+      const container = previewContainerRef.current;
+      const cWidth = container ? container.clientWidth : 480;
+      const cHeight = container ? container.clientHeight : Math.round(480 / targetAspect);
 
-      ctx.fillStyle = '#f5f5f7';
+      let baseW, baseH;
+      const imgAspect = img.width / img.height;
+      if (imgAspect > targetAspect) {
+        baseH = cHeight;
+        baseW = cHeight * imgAspect;
+      } else {
+        baseW = cWidth;
+        baseH = cWidth / imgAspect;
+      }
+
+      const scale = targetWidth / cWidth;
+      const finalW = baseW * zoom * scale;
+      const finalH = baseH * zoom * scale;
+
+      const drawX = (targetWidth - finalW) / 2 + (dragPos.x * scale);
+      const drawY = (targetHeight - finalH) / 2 + (dragPos.y * scale);
+
+      ctx.fillStyle = '#0a0a0c';
       ctx.fillRect(0, 0, targetWidth, targetHeight);
-      ctx.drawImage(img, drawX, drawY, renderWidth, renderHeight);
+      ctx.drawImage(img, drawX, drawY, finalW, finalH);
 
-      const finalBase64 = canvas.toDataURL('image/jpeg', 0.75);
+      const finalBase64 = canvas.toDataURL('image/jpeg', 0.85);
       if (adjustmentModal.callback) {
         adjustmentModal.callback(finalBase64);
       }
       setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16 / 9 });
+      setDragPos({ x: 0, y: 0 });
+      setZoom(1);
     };
   };
 
@@ -801,254 +861,294 @@ const AdminDashboard = () => {
             {/* TAB 2: NỘI DUNG TRANG CHỦ */}
             {activeTab === 'homepage' && (
               <motion.div key="homepage" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                {/* 2.1 Dải Phim Kỹ Thuật Số */}
-                <div className="admin-card">
-                  <div className="config-section-title">
-                    <Film size={18} /> CẤU HÌNH DẢI PHIM KỸ THUẬT SỐ
-                  </div>
+                {/* Segmented Sub-Tabs Bar */}
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.75rem', background: '#ffffff', padding: '6px', borderRadius: '14px', border: '1px solid var(--apple-border)', width: 'fit-content', boxShadow: '0 1px 3px rgba(0,0,0,0.03)', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className={`filter-pill ${homepageSubTab === 'filmstrip' ? 'active' : ''}`}
+                    onClick={() => setHomepageSubTab('filmstrip')}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.1rem', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600 }}
+                  >
+                    <Film size={15} />
+                    <span>Dải Phim Kỹ Thuật Số ({(localConfig.content?.filmStripImages || []).length})</span>
+                  </button>
 
-                  <div className="form-group">
-                    <label>Tốc Độ Cuộn Phim (Giây)</label>
-                    <input
-                      type="number"
-                      className="admin-input"
-                      value={localConfig.content?.filmStripSpeed || 45}
-                      onChange={(e) => updateNested('content', 'filmStripSpeed', Number(e.target.value))}
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    className={`filter-pill ${homepageSubTab === 'apps' ? 'active' : ''}`}
+                    onClick={() => setHomepageSubTab('apps')}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.1rem', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600 }}
+                  >
+                    <Package size={15} />
+                    <span>Ứng Dụng Tin Dùng ({(localConfig.apps || []).length})</span>
+                  </button>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '2rem 0 1rem 0', flexWrap: 'wrap', gap: '1rem' }}>
-                    <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--apple-text-secondary)' }}>
-                      DANH SÁCH KHUNG HÌNH ({(localConfig.content?.filmStripImages || []).length})
-                    </label>
-                    <label className="add-btn" style={{ cursor: 'pointer' }}>
-                      <Upload size={15} /> Thêm Khung Hình
+                  <button
+                    type="button"
+                    className={`filter-pill ${homepageSubTab === 'quotes' ? 'active' : ''}`}
+                    onClick={() => setHomepageSubTab('quotes')}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.1rem', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600 }}
+                  >
+                    <MessageSquare size={15} />
+                    <span>Danh Ngôn Trang Chủ ({(localConfig.content?.quotes || []).length})</span>
+                  </button>
+                </div>
+
+                {/* SubTab 1: Dải Phim Kỹ Thuật Số */}
+                {homepageSubTab === 'filmstrip' && (
+                  <div className="admin-card">
+                    <div className="config-section-title">
+                      <Film size={18} /> CẤU HÌNH DẢI PHIM KỸ THUẬT SỐ
+                    </div>
+
+                    <div className="form-group">
+                      <label>Tốc Độ Cuộn Phim (Giây)</label>
                       <input
-                        type="file"
-                        accept="image/*"
-                        style={{ display: 'none' }}
-                        onChange={(e) => handleFileUpload(e, (res) => {
-                          const currentImages = [...(localConfig.content?.filmStripImages || [])];
-                          currentImages.push(res);
-                          updateNested('content', 'filmStripImages', currentImages);
-                        }, 16 / 9)}
+                        type="number"
+                        className="admin-input"
+                        value={localConfig.content?.filmStripSpeed || 45}
+                        onChange={(e) => updateNested('content', 'filmStripSpeed', Number(e.target.value))}
                       />
-                    </label>
-                  </div>
+                    </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-                    {(localConfig.content?.filmStripImages || []).map((imgUrl, idx) => (
-                      <div key={idx} style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--apple-border)', background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                        <div style={{ width: '100%', height: '120px', background: 'rgba(0,0,0,0.02)' }}>
-                          <img src={imgUrl} alt={`Filmstrip ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '2rem 0 1rem 0', flexWrap: 'wrap', gap: '1rem' }}>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--apple-text-secondary)' }}>
+                        DANH SÁCH KHUNG HÌNH ({(localConfig.content?.filmStripImages || []).length})
+                      </label>
+                      <label className="add-btn" style={{ cursor: 'pointer' }}>
+                        <Upload size={15} /> Thêm Khung Hình
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => handleFileUpload(e, (res) => {
+                            const currentImages = [...(localConfig.content?.filmStripImages || [])];
+                            currentImages.push(res);
+                            updateNested('content', 'filmStripImages', currentImages);
+                          }, 16 / 9)}
+                        />
+                      </label>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                      {(localConfig.content?.filmStripImages || []).map((imgUrl, idx) => (
+                        <div key={idx} style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--apple-border)', background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                          <div style={{ width: '100%', height: '120px', background: 'rgba(0,0,0,0.02)' }}>
+                            <img src={imgUrl} alt={`Filmstrip ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: '#ffffff' }}>
+                            <button
+                              className="btn-ghost"
+                              style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
+                              onClick={() => handleReAdjust(imgUrl, (res) => {
+                                const currentImages = [...(localConfig.content?.filmStripImages || [])];
+                                currentImages[idx] = res;
+                                updateNested('content', 'filmStripImages', currentImages);
+                              }, 16 / 9)}
+                            >
+                              <Crop size={13} /> Sửa
+                            </button>
+                            <button
+                              className="delete-btn"
+                              onClick={() => {
+                                const currentImages = (localConfig.content?.filmStripImages || []).filter((_, i) => i !== idx);
+                                updateNested('content', 'filmStripImages', currentImages);
+                              }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: '#ffffff' }}>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* SubTab 2: Ứng Dụng Tin Dùng */}
+                {homepageSubTab === 'apps' && (
+                  <div className="admin-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                      <div>
+                        <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
+                          <Package size={18} /> HỆ SINH THÁI ỨNG DỤNG TIN DÙNG ({(localConfig.apps || []).length})
+                        </div>
+                        <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
+                          Chọn logo thương hiệu chính hãng hoặc tải logo riêng, logo sẽ tự động mang màu sắc chuẩn.
+                        </p>
+                      </div>
+                      <button className="add-btn" onClick={() => {
+                        const newApps = [...(localConfig.apps || [])];
+                        newApps.push({ name: '', color: '#0071e3', iconUrl: '' });
+                        setLocalConfig(prev => ({ ...prev, apps: newApps }));
+                      }}>
+                        <Plus size={15} /> Thêm Ứng Dụng
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {(localConfig.apps || []).map((app, idx) => (
+                        <div key={idx} className="app-compact-row">
+                          <div style={{ position: 'relative' }}>
+                            <button
+                              type="button"
+                              className="social-logo-trigger"
+                              onClick={() => setActiveAppLogoPickerIdx(activeAppLogoPickerIdx === idx ? null : idx)}
+                              title="Bấm để đổi Logo thương hiệu hoặc tải ảnh lên"
+                            >
+                              {renderAppLogo(app)}
+                            </button>
+
+                            {activeAppLogoPickerIdx === idx && (
+                              <div className="social-picker-dropdown">
+                                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.6rem' }}>
+                                  CHỌN LOGO THƯƠNG HIỆU CÓ SẴN
+                                </div>
+                                <div className="social-picker-grid">
+                                  {APP_PRESET_LOGOS.map((preset) => (
+                                    <button
+                                      key={preset.name}
+                                      type="button"
+                                      className="social-preset-btn"
+                                      onClick={() => {
+                                        const newApps = [...localConfig.apps];
+                                        newApps[idx] = {
+                                          ...newApps[idx],
+                                          name: newApps[idx].name || preset.name,
+                                          color: preset.color,
+                                          iconKey: preset.name,
+                                          iconUrl: ''
+                                        };
+                                        setLocalConfig(prev => ({ ...prev, apps: newApps }));
+                                        setActiveAppLogoPickerIdx(null);
+                                      }}
+                                    >
+                                      <div style={{ width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {preset.renderIcon({ width: '100%', height: '100%', style: { color: preset.color } })}
+                                      </div>
+                                      <span>{preset.name}</span>
+                                    </button>
+                                  ))}
+                                </div>
+
+                                <div style={{ borderTop: '1px solid var(--apple-border)', paddingTop: '0.65rem', marginTop: '0.5rem' }}>
+                                  <label className="btn-ghost" style={{ width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.5rem' }}>
+                                    <Upload size={14} />
+                                    <span>Tải Logo Riêng Từ Máy</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      style={{ display: 'none' }}
+                                      onChange={(e) => handleFileUpload(e, (res) => {
+                                        const newApps = [...localConfig.apps];
+                                        newApps[idx] = { ...newApps[idx], iconUrl: res, iconKey: '' };
+                                        setLocalConfig(prev => ({ ...prev, apps: newApps }));
+                                        setActiveAppLogoPickerIdx(null);
+                                      }, 1)}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {app.iconUrl && (
+                            <button
+                              type="button"
+                              className="btn-ghost"
+                              style={{ padding: '0.45rem', width: '36px', height: '36px', minHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              onClick={() => handleReAdjust(app.iconUrl, (res) => {
+                                const newApps = [...(localConfig.apps || [])];
+                                newApps[idx] = { ...newApps[idx], iconUrl: res };
+                                setLocalConfig(prev => ({ ...prev, apps: newApps }));
+                              }, 1)}
+                              title="Căn chỉnh icon"
+                            >
+                              <Crop size={14} />
+                            </button>
+                          )}
+
+                          <input
+                            type="text"
+                            className="admin-input"
+                            placeholder="Tên ứng dụng (vd: Antigravity, GitHub, VS Code...)"
+                            value={app.name || ''}
+                            style={{ flex: 1 }}
+                            onChange={(e) => {
+                              const newApps = [...(localConfig.apps || [])];
+                              newApps[idx] = { ...newApps[idx], name: e.target.value };
+                              setLocalConfig(prev => ({ ...prev, apps: newApps }));
+                            }}
+                          />
+
                           <button
-                            className="btn-ghost"
-                            style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
-                            onClick={() => handleReAdjust(imgUrl, (res) => {
-                              const currentImages = [...(localConfig.content?.filmStripImages || [])];
-                              currentImages[idx] = res;
-                              updateNested('content', 'filmStripImages', currentImages);
-                            }, 16 / 9)}
-                          >
-                            <Crop size={13} /> Sửa
-                          </button>
-                          <button
+                            type="button"
                             className="delete-btn"
                             onClick={() => {
-                              const currentImages = (localConfig.content?.filmStripImages || []).filter((_, i) => i !== idx);
-                              updateNested('content', 'filmStripImages', currentImages);
-                            }}
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 2.2 Ứng Dụng Tin Dùng (No Hex Color Picker) */}
-                <div className="admin-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div>
-                      <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
-                        <Package size={18} /> HỆ SINH THÁI ỨNG DỤNG TIN DÙNG ({(localConfig.apps || []).length})
-                      </div>
-                      <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
-                        Chọn logo thương hiệu chính hãng hoặc tải logo riêng, logo sẽ tự động mang màu sắc chuẩn.
-                      </p>
-                    </div>
-                    <button className="add-btn" onClick={() => {
-                      const newApps = [...(localConfig.apps || [])];
-                      newApps.push({ name: '', color: '#0071e3', iconUrl: '' });
-                      setLocalConfig(prev => ({ ...prev, apps: newApps }));
-                    }}>
-                      <Plus size={15} /> Thêm Ứng Dụng
-                    </button>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {(localConfig.apps || []).map((app, idx) => (
-                      <div key={idx} className="app-compact-row">
-                        <div style={{ position: 'relative' }}>
-                          <button
-                            type="button"
-                            className="social-logo-trigger"
-                            onClick={() => setActiveAppLogoPickerIdx(activeAppLogoPickerIdx === idx ? null : idx)}
-                            title="Bấm để đổi Logo thương hiệu hoặc tải ảnh lên"
-                          >
-                            {renderAppLogo(app)}
-                          </button>
-
-                          {activeAppLogoPickerIdx === idx && (
-                            <div className="social-picker-dropdown">
-                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.6rem' }}>
-                                CHỌN LOGO THƯƠNG HIỆU CÓ SẴN
-                              </div>
-                              <div className="social-picker-grid">
-                                {APP_PRESET_LOGOS.map((preset) => (
-                                  <button
-                                    key={preset.name}
-                                    type="button"
-                                    className="social-preset-btn"
-                                    onClick={() => {
-                                      const newApps = [...localConfig.apps];
-                                      newApps[idx] = {
-                                        ...newApps[idx],
-                                        name: newApps[idx].name || preset.name,
-                                        color: preset.color,
-                                        iconKey: preset.name,
-                                        iconUrl: ''
-                                      };
-                                      setLocalConfig(prev => ({ ...prev, apps: newApps }));
-                                      setActiveAppLogoPickerIdx(null);
-                                    }}
-                                  >
-                                    <div style={{ width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                      {preset.renderIcon({ width: '100%', height: '100%', style: { color: preset.color } })}
-                                    </div>
-                                    <span>{preset.name}</span>
-                                  </button>
-                                ))}
-                              </div>
-
-                              <div style={{ borderTop: '1px solid var(--apple-border)', paddingTop: '0.65rem', marginTop: '0.5rem' }}>
-                                <label className="btn-ghost" style={{ width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.5rem' }}>
-                                  <Upload size={14} />
-                                  <span>Tải Logo Riêng Từ Máy</span>
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    style={{ display: 'none' }}
-                                    onChange={(e) => handleFileUpload(e, (res) => {
-                                      const newApps = [...localConfig.apps];
-                                      newApps[idx] = { ...newApps[idx], iconUrl: res, iconKey: '' };
-                                      setLocalConfig(prev => ({ ...prev, apps: newApps }));
-                                      setActiveAppLogoPickerIdx(null);
-                                    }, 1)}
-                                  />
-                                </label>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {app.iconUrl && (
-                          <button
-                            type="button"
-                            className="btn-ghost"
-                            style={{ padding: '0.45rem', width: '36px', height: '36px', minHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            onClick={() => handleReAdjust(app.iconUrl, (res) => {
-                              const newApps = [...(localConfig.apps || [])];
-                              newApps[idx] = { ...newApps[idx], iconUrl: res };
+                              const newApps = (localConfig.apps || []).filter((_, i) => i !== idx);
                               setLocalConfig(prev => ({ ...prev, apps: newApps }));
-                            }, 1)}
-                            title="Căn chỉnh icon"
+                            }}
+                            aria-label={`Xóa ứng dụng ${app.name || ''}`}
                           >
-                            <Crop size={14} />
+                            <Trash2 size={15} />
                           </button>
-                        )}
-
-                        <input
-                          type="text"
-                          className="admin-input"
-                          placeholder="Tên ứng dụng (vd: Antigravity, GitHub, VS Code...)"
-                          value={app.name || ''}
-                          style={{ flex: 1 }}
-                          onChange={(e) => {
-                            const newApps = [...(localConfig.apps || [])];
-                            newApps[idx] = { ...newApps[idx], name: e.target.value };
-                            setLocalConfig(prev => ({ ...prev, apps: newApps }));
-                          }}
-                        />
-
-                        <button
-                          type="button"
-                          className="delete-btn"
-                          onClick={() => {
-                            const newApps = (localConfig.apps || []).filter((_, i) => i !== idx);
-                            setLocalConfig(prev => ({ ...prev, apps: newApps }));
-                          }}
-                          aria-label={`Xóa ứng dụng ${app.name || ''}`}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 2.3 Danh Ngôn Trang Chủ */}
-                <div className="admin-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div>
-                      <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
-                        <MessageSquare size={18} /> QUẢN LÝ DANH NGÔN TRANG CHỦ ({(localConfig.content?.quotes || []).length})
-                      </div>
-                      <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
-                        Các câu trích dẫn sẽ hiển thị tự động trên thanh tiêu đề và chân trang web.
-                      </p>
+                        </div>
+                      ))}
                     </div>
-                    <button className="add-btn" onClick={() => {
-                      const newQuotes = [...(localConfig.content?.quotes || [])];
-                      newQuotes.push('Danh ngôn mới...');
-                      updateNested('content', 'quotes', newQuotes);
-                    }}>
-                      <Plus size={15} /> Thêm Danh Ngôn
-                    </button>
                   </div>
+                )}
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                    {(localConfig.content?.quotes || []).map((quote, idx) => (
-                      <div key={idx} className="quote-item-card">
-                        <span className="quote-index">{String(idx + 1).padStart(2, '0')}</span>
-                        <textarea
-                          className="quote-edit-input"
-                          value={quote}
-                          onChange={(e) => {
-                            const newQuotes = [...(localConfig.content?.quotes || [])];
-                            newQuotes[idx] = e.target.value;
-                            updateNested('content', 'quotes', newQuotes);
-                          }}
-                          rows={2}
-                          aria-label={`Danh ngôn số ${idx + 1}`}
-                        />
-                        <button
-                          className="delete-btn"
-                          onClick={() => {
-                            const newQuotes = (localConfig.content?.quotes || []).filter((_, i) => i !== idx);
-                            updateNested('content', 'quotes', newQuotes);
-                          }}
-                          aria-label={`Xóa danh ngôn số ${idx + 1}`}
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                {/* SubTab 3: Danh Ngôn Trang Chủ */}
+                {homepageSubTab === 'quotes' && (
+                  <div className="admin-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                      <div>
+                        <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
+                          <MessageSquare size={18} /> QUẢN LÝ DANH NGÔN TRANG CHỦ ({(localConfig.content?.quotes || []).length})
+                        </div>
+                        <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
+                          Các câu trích dẫn sẽ hiển thị tự động trên thanh tiêu đề và chân trang web.
+                        </p>
                       </div>
-                    ))}
+                      <button className="add-btn" onClick={() => {
+                        const newQuotes = [...(localConfig.content?.quotes || [])];
+                        newQuotes.push('Danh ngôn mới...');
+                        updateNested('content', 'quotes', newQuotes);
+                      }}>
+                        <Plus size={15} /> Thêm Danh Ngôn
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                      {(localConfig.content?.quotes || []).map((quote, idx) => (
+                        <div key={idx} className="quote-item-card">
+                          <span className="quote-index">{String(idx + 1).padStart(2, '0')}</span>
+                          <textarea
+                            className="quote-edit-input"
+                            value={quote}
+                            onChange={(e) => {
+                              const newQuotes = [...(localConfig.content?.quotes || [])];
+                              newQuotes[idx] = e.target.value;
+                              updateNested('content', 'quotes', newQuotes);
+                            }}
+                            rows={2}
+                            aria-label={`Danh ngôn số ${idx + 1}`}
+                          />
+                          <button
+                            type="button"
+                            className="delete-btn"
+                            onClick={() => {
+                              const newQuotes = (localConfig.content?.quotes || []).filter((_, i) => i !== idx);
+                              updateNested('content', 'quotes', newQuotes);
+                            }}
+                            aria-label={`Xóa danh ngôn số ${idx + 1}`}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </motion.div>
             )}
 
@@ -1388,34 +1488,92 @@ const AdminDashboard = () => {
 
       {/* Image Crop Adjustment Modal */}
       {adjustmentModal.isOpen && (
-        <div className="admin-modal-backdrop">
-          <div className="admin-modal-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <div className="config-section-title" style={{ margin: 0 }}>CĂN CHỈNH KHUNG HÌNH</div>
+        <div className="admin-modal-backdrop" onMouseUp={handleMouseUp} onTouchEnd={handleMouseUp}>
+          <div className="admin-modal-card" style={{ maxWidth: '560px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div>
+                <div className="config-section-title" style={{ margin: 0 }}>CĂN CHỈNH KHUNG HÌNH</div>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.78rem', color: 'var(--apple-text-secondary)' }}>
+                  Bấm giữ chuột để kéo di chuyển vị trí hoặc dùng thanh trượt để thu phóng.
+                </p>
+              </div>
               <button className="btn-ghost" style={{ padding: '0.4rem' }} onClick={() => setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16 / 9 })}>
                 <X size={16} />
               </button>
             </div>
 
-            <div style={{ width: '100%', height: '260px', background: '#f5f5f7', borderRadius: '12px', border: '1px solid var(--apple-border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
+            <div 
+              ref={previewContainerRef}
+              style={{ 
+                width: '100%', 
+                height: '280px', 
+                background: '#0a0a0c', 
+                borderRadius: '12px', 
+                border: '2px dashed var(--apple-blue)', 
+                overflow: 'hidden', 
+                position: 'relative',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                marginBottom: '1.25rem',
+                cursor: isDragging ? 'grabbing' : 'grab',
+                userSelect: 'none'
+              }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleMouseUp}
+            >
               <img
                 src={adjustmentModal.src}
                 alt="Preview"
+                draggable={false}
                 style={{
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  transform: `scale(${zoom}) translate(${dragPos.x}px, ${dragPos.y}px)`,
-                  transition: 'transform 0.1s'
+                  maxWidth: 'none',
+                  maxHeight: 'none',
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  transform: `scale(${zoom}) translate(${dragPos.x / zoom}px, ${dragPos.y / zoom}px)`,
+                  transition: isDragging ? 'none' : 'transform 0.05s ease-out',
+                  pointerEvents: 'none'
                 }}
               />
+              <div style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'rgba(0,0,0,0.65)', color: '#ffffff', padding: '3px 8px', borderRadius: '6px', fontSize: '0.7rem', pointerEvents: 'none' }}>
+                16 : 9 Khung chuẩn
+              </div>
             </div>
 
-            <div className="form-group">
-              <label>Thu Phóng (Zoom: {zoom.toFixed(1)}x)</label>
-              <input type="range" min="0.5" max="2.5" step="0.1" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Thu Phóng</label>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--apple-blue)', fontWeight: 700 }}>{zoom.toFixed(1)}x</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0.5" 
+                  max="3.0" 
+                  step="0.05" 
+                  value={zoom} 
+                  onChange={(e) => setZoom(Number(e.target.value))} 
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <button 
+                type="button" 
+                className="btn-ghost" 
+                style={{ padding: '0.5rem 0.85rem', fontSize: '0.78rem', marginTop: '1rem' }}
+                onClick={() => { setDragPos({ x: 0, y: 0 }); setZoom(1); }}
+              >
+                Đặt Lại
+              </button>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
               <button className="btn-ghost" onClick={() => setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16 / 9 })}>Hủy</button>
               <button className="save-btn" onClick={confirmCrop}>Áp Dụng</button>
             </div>
