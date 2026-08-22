@@ -26,20 +26,9 @@ import {
 } from 'lucide-react';
 
 import { db } from '../../firebase';
-import { 
-  doc, 
-  setDoc, 
-  collection, 
-  getDocs, 
-  deleteDoc, 
-  query, 
-  orderBy, 
-  limit, 
-  onSnapshot,
-  getCountFromServer 
-} from 'firebase/firestore';
+import { doc, setDoc, collection, getDocs, deleteDoc, query, orderBy, limit, onSnapshot, getCountFromServer } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
-import { useConfig } from '../../context/ConfigContext';
+import { useConfig, DEFAULT_CONFIG } from '../../context/ConfigContext';
 import SocialIcon from '../../components/SocialIcon';
 import { APP_PRESET_LOGOS, renderAppLogo } from '../../constants/appLogos';
 import { APP_ROUTES } from '../../constants/routes';
@@ -49,50 +38,67 @@ const SOCIAL_PLATFORMS = [
   { name: 'Facebook', color: '#1877F2', icon: 'Facebook' },
   { name: 'YouTube', color: '#FF0000', icon: 'YouTube' },
   { name: 'GitHub', color: '#181717', icon: 'GitHub' },
+  { name: 'TikTok', color: '#000000', icon: 'TikTok' },
   { name: 'Telegram', color: '#26A5E4', icon: 'Telegram' },
-  { name: 'LinkedIn', color: '#0A66C2', icon: 'LinkedIn' },
-  { name: 'Twitter / X', color: '#000000', icon: 'Twitter' },
+  { name: 'X (Twitter)', color: '#000000', icon: 'X' },
   { name: 'Instagram', color: '#E4405F', icon: 'Instagram' },
   { name: 'Discord', color: '#5865F2', icon: 'Discord' },
-  { name: 'TikTok', color: '#000000', icon: 'TikTok' },
-  { name: 'Zalo', color: '#0068FF', icon: 'Zalo' }
+  { name: 'Zalo', color: '#0068FF', icon: 'Zalo' },
+  { name: 'Reddit', color: '#FF4500', icon: 'Reddit' },
+  { name: 'Threads', color: '#000000', icon: 'Threads' },
+  { name: 'Website', color: '#4B5563', icon: 'Globe' }
 ];
 
 const AdminDashboard = () => {
-  const { config, setConfig } = useConfig();
+  const { config, loading } = useConfig();
+  const [activeTab, setActiveTab] = useState('general');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [localConfig, setLocalConfig] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [homepageSubTab, setHomepageSubTab] = useState('filmstrip');
-  const [status, setStatus] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [usersList, setUsersList] = useState([]);
-  const [blogPosts, setBlogPosts] = useState([]);
-  const [projectsList, setProjectsList] = useState([]);
-  const [analyticsData, setAnalyticsData] = useState([]);
-  const [totalLifetimeHits, setTotalLifetimeHits] = useState(0);
-  const [analyticsFilter, setAnalyticsFilter] = useState('all');
-  const [trafficPage, setTrafficPage] = useState(1);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // Logo Picker States
-  const [activeSocialPickerIdx, setActiveSocialPickerIdx] = useState(null);
+  const [status, setStatus] = useState('');
+  const [adjustmentModal, setAdjustmentModal] = useState({ isOpen: false, src: '', callback: null, aspect: 16 / 9 });
+  const [activeIconPickerIdx, setActiveIconPickerIdx] = useState(null);
   const [activeAppLogoPickerIdx, setActiveAppLogoPickerIdx] = useState(null);
-
-  // Image Cropper State
-  const [cropperModal, setCropperModal] = useState({
-    isOpen: false,
-    imageSrc: '',
-    aspectRatio: 1,
-    zoom: 1,
-    pan: { x: 0, y: 0 },
-    onSaveCallback: null
-  });
+  const [zoom, setZoom] = useState(1);
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const previewContainerRef = useRef(null);
 
-  const handleSaveRef = useRef(null);
+  // Homepage sub-tab state
+  const [homepageSubTab, setHomepageSubTab] = useState('filmstrip'); // 'filmstrip' | 'apps' | 'quotes'
 
-  // Keyboard shortcut: Ctrl + S to save
+  // Users state
+  const [usersList, setUsersList] = useState([]);
+  const [userModal, setUserModal] = useState({ isOpen: false, mode: 'add', data: {} });
+
+  // Analytics state
+  const [analyticsData, setAnalyticsData] = useState([]);
+  const [totalLifetimeHits, setTotalLifetimeHits] = useState(0);
+
+  const fetchTotalHitsCount = async () => {
+    try {
+      const coll = collection(db, 'system_analytics');
+      const snapshot = await getCountFromServer(coll);
+      setTotalLifetimeHits(snapshot.data().count);
+    } catch (err) {
+      console.error('Error fetching total hits count:', err);
+    }
+  };
+  const [analyticsFilter, setAnalyticsFilter] = useState('all'); // 'all' | 'desktop' | 'mobile'
+  const [trafficPage, setTrafficPage] = useState(1);
+  const TRAFFIC_PER_PAGE = 20;
+
+  // Blog State
+  const [blogPosts, setBlogPosts] = useState([]);
+
+  // Projects State
+  const [projectsList, setProjectsList] = useState([]);
+  const [projectModal, setProjectModal] = useState({ isOpen: false, mode: 'add', data: {} });
+
+  const handleSaveRef = useRef();
+
+  // Keyboard shortcut: Ctrl+S / Cmd+S to Save
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -117,20 +123,9 @@ const AdminDashboard = () => {
     if (activeTab === 'projects') fetchProjects();
   }, [activeTab]);
 
-  // Fetch total lifetime hits count
-  const fetchTotalHitsCount = async () => {
-    try {
-      const coll = collection(db, 'system_analytics');
-      const snapshot = await getCountFromServer(coll);
-      setTotalLifetimeHits(snapshot.data().count);
-    } catch (err) {
-      console.error("Error fetching total hits count:", err);
-    }
-  };
-
   // Realtime Traffic Analytics Stream
   useEffect(() => {
-    if (activeTab === 'analytics' || activeTab === 'overview') {
+    if (activeTab === 'analytics' || activeTab === 'general') {
       fetchTotalHitsCount();
       const q = query(collection(db, 'system_analytics'), orderBy('timestamp', 'desc'), limit(200));
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -139,7 +134,6 @@ const AdminDashboard = () => {
           data.push({ id: d.id, ...d.data() });
         });
         setAnalyticsData(data);
-        fetchTotalHitsCount();
       }, (err) => {
         console.error("Analytics stream error:", err);
       });
@@ -193,7 +187,7 @@ const AdminDashboard = () => {
     const nowSec = Math.floor(Date.now() / 1000);
     return groupedVisitors.filter(v => {
       const lastSec = v.lastTimestamp?.seconds || (v.lastTimestamp ? Math.floor(new Date(v.lastTimestamp).getTime() / 1000) : 0);
-      return (nowSec - lastSec) <= 300; // Active in last 5 mins
+      return (nowSec - lastSec) <= 300; // Active in last 5 minutes
     }).length;
   }, [groupedVisitors]);
 
@@ -207,8 +201,8 @@ const AdminDashboard = () => {
     try {
       const querySnapshot = await getDocs(collection(db, 'users'));
       const users = [];
-      querySnapshot.forEach((docSnap) => {
-        users.push({ id: docSnap.id, ...docSnap.data() });
+      querySnapshot.forEach((doc) => {
+        users.push({ id: doc.id, ...doc.data() });
       });
       setUsersList(users);
     } catch (err) {
@@ -221,8 +215,8 @@ const AdminDashboard = () => {
       const q = query(collection(db, 'blog_posts'), orderBy('timestamp', 'desc'));
       const querySnapshot = await getDocs(q);
       const posts = [];
-      querySnapshot.forEach((docSnap) => {
-        posts.push({ id: docSnap.id, ...docSnap.data() });
+      querySnapshot.forEach((doc) => {
+        posts.push({ id: doc.id, ...doc.data() });
       });
       setBlogPosts(posts);
     } catch (err) {
@@ -240,40 +234,93 @@ const AdminDashboard = () => {
       projs.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
       setProjectsList(projs);
     } catch (err) {
-      console.error(err);
+      console.error("fetchProjects error:", err);
     }
   };
 
-  const deleteBlogPost = async (id) => {
+  const deleteBlogPost = async (postId) => {
     if (!window.confirm('Are you sure you want to permanently delete this article?')) return;
     try {
-      await deleteDoc(doc(db, 'blog_posts', id));
-      setBlogPosts(prev => prev.filter(p => p.id !== id));
+      await deleteDoc(doc(db, 'blog_posts', postId));
+      setBlogPosts(prev => prev.filter(p => p.id !== postId));
       showToast('Article deleted successfully!');
     } catch (err) {
-      alert('Delete error: ' + err.message);
+      alert('Error deleting article: ' + err.message);
     }
   };
 
-  const deleteProjectRecord = async (id) => {
+  const deleteProjectRecord = async (projId) => {
     if (!window.confirm('Are you sure you want to permanently delete this project?')) return;
     try {
-      await deleteDoc(doc(db, 'projects', id));
-      setProjectsList(prev => prev.filter(p => p.id !== id));
+      await deleteDoc(doc(db, 'projects', projId));
+      setProjectsList(prev => prev.filter(p => p.id !== projId));
       showToast('Project deleted successfully!');
     } catch (err) {
-      alert('Delete error: ' + err.message);
+      alert('Error deleting project: ' + err.message);
     }
   };
 
-  const deleteUserRecord = async (id) => {
+  const handleSaveProject = async () => {
+    try {
+      const data = { ...projectModal.data };
+      if (!data.title) {
+        alert('Please enter a project title!');
+        return;
+      }
+      if (typeof data.tags === 'string') {
+        data.tags = data.tags.split(',').map(t => t.trim()).filter(Boolean);
+      }
+      const targetId = projectModal.mode === 'add' ? (data.slug || 'proj_' + Date.now().toString(36)) : data.id;
+      await setDoc(doc(db, 'projects', targetId), {
+        ...data,
+        id: targetId,
+        thumbnail: data.thumbnail || data.image || '',
+        demoUrl: data.demoUrl || '',
+        githubUrl: data.githubUrl || '',
+        order: Number(data.order) || 0,
+        createdAt: data.createdAt || new Date().toISOString()
+      }, { merge: true });
+
+      setUserModal({ isOpen: false, mode: 'add', data: {} });
+      setProjectModal({ isOpen: false, mode: 'add', data: {} });
+      fetchProjects();
+      showToast('Project saved successfully!');
+    } catch (err) {
+      alert('Error saving project: ' + err.message);
+    }
+  };
+
+  const handleSaveUser = async () => {
+    try {
+      const data = { ...userModal.data };
+      if (!data.email || !data.username) {
+        alert('Please enter Email and Username!');
+        return;
+      }
+      const targetId = userModal.mode === 'add' ? Date.now().toString() : data.id;
+      await setDoc(doc(db, 'users', targetId), {
+        ...data,
+        id: targetId,
+        role: data.role || 'user',
+        createdAt: data.createdAt || new Date().toISOString()
+      }, { merge: true });
+
+      setUserModal({ isOpen: false, mode: 'add', data: {} });
+      fetchUsers();
+      showToast('User saved successfully!');
+    } catch (err) {
+      alert('Error saving user: ' + err.message);
+    }
+  };
+
+  const deleteUserRecord = async (userId) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
     try {
-      await deleteDoc(doc(db, 'users', id));
-      setUsersList(prev => prev.filter(u => u.id !== id));
+      await deleteDoc(doc(db, 'users', userId));
+      setUsersList(prev => prev.filter(u => u.id !== userId));
       showToast('User deleted successfully!');
     } catch (err) {
-      alert('Delete error: ' + err.message);
+      alert('Error deleting user: ' + err.message);
     }
   };
 
@@ -282,34 +329,60 @@ const AdminDashboard = () => {
     setTimeout(() => setStatus(''), 3000);
   };
 
+  const computeConfigDiff = (original, current) => {
+    if (!original) return current;
+    const diff = {};
+
+    if (JSON.stringify(original.general || {}) !== JSON.stringify(current.general || {})) {
+      diff.general = current.general || {};
+    }
+    if (JSON.stringify(original.appearance || {}) !== JSON.stringify(current.appearance || {})) {
+      diff.appearance = current.appearance || {};
+    }
+    if (JSON.stringify(original.social_links || []) !== JSON.stringify(current.social_links || [])) {
+      diff.social_links = current.social_links || [];
+    }
+    if (JSON.stringify(original.maintenance || {}) !== JSON.stringify(current.maintenance || {})) {
+      diff.maintenance = current.maintenance || {};
+    }
+    if (JSON.stringify(original.apps || []) !== JSON.stringify(current.apps || [])) {
+      diff.apps = current.apps || [];
+    }
+    if (JSON.stringify(original.content?.quotes || []) !== JSON.stringify(current.content?.quotes || []) ||
+      original.content?.filmStripSpeed !== current.content?.filmStripSpeed) {
+      diff.content = {
+        quotes: current.content?.quotes || [],
+        filmStripSpeed: current.content?.filmStripSpeed || 45
+      };
+    }
+    return diff;
+  };
+
   const handleSave = async () => {
     if (!localConfig) return;
+    const diffPayload = computeConfigDiff(config, localConfig);
+    const filmStripChanged = JSON.stringify(config?.content?.filmStripImages || []) !== JSON.stringify(localConfig.content?.filmStripImages || []);
+
+    if (Object.keys(diffPayload).length === 0 && !filmStripChanged) {
+      showToast('No changes to save.');
+      return;
+    }
 
     setIsSaving(true);
     try {
-      const payload = {
-        appearance: localConfig.appearance || {},
-        social_links: localConfig.social_links || [],
-        apps: localConfig.apps || [],
-        content: {
-          quotes: localConfig.content?.quotes || [],
-          filmStripSpeed: Number(localConfig.content?.filmStripSpeed) || 45,
+      const promises = [];
+      if (Object.keys(diffPayload).length > 0) {
+        promises.push(setDoc(doc(db, 'site_config', 'main_config'), diffPayload, { merge: true }));
+      }
+      if (filmStripChanged) {
+        promises.push(setDoc(doc(db, 'system', 'memories'), {
           filmStripImages: localConfig.content?.filmStripImages || []
-        },
-        maintenance: localConfig.maintenance || {}
-      };
-
-      const promises = [
-        setDoc(doc(db, 'site_config', 'main_config'), payload, { merge: true }),
-        setDoc(doc(db, 'system', 'memories'), {
-          filmStripImages: localConfig.content?.filmStripImages || []
-        }, { merge: true })
-      ];
+        }, { merge: true }));
+      }
       await Promise.all(promises);
-      if (setConfig) setConfig(localConfig);
       showToast('Configuration saved successfully!');
     } catch (err) {
-      alert('Save error: ' + err.message);
+      alert('Save configuration error: ' + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -317,332 +390,450 @@ const AdminDashboard = () => {
   handleSaveRef.current = handleSave;
 
   const updateNested = (category, field, value) => {
-    setLocalConfig(prev => ({
-      ...prev,
-      [category]: {
-        ...(prev[category] || {}),
-        [field]: value
-      }
-    }));
-  };
-
-  const handleFileUpload = (e, callback, aspectRatio = 1) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setCropperModal({
-        isOpen: true,
-        imageSrc: event.target.result,
-        aspectRatio,
-        zoom: 1,
-        pan: { x: 0, y: 0 },
-        onSaveCallback: callback
-      });
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  };
-
-  const handleReAdjust = (imgUrl, callback, aspectRatio = 16 / 9) => {
-    setCropperModal({
-      isOpen: true,
-      imageSrc: imgUrl,
-      aspectRatio,
-      zoom: 1,
-      pan: { x: 0, y: 0 },
-      onSaveCallback: callback
+    setLocalConfig(prev => {
+      const updated = { ...prev };
+      if (!updated[category]) updated[category] = {};
+      updated[category][field] = value;
+      return updated;
     });
   };
 
-  const handleCropSave = () => {
-    const canvas = document.createElement('canvas');
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = cropperModal.imageSrc;
+  const compressImage = (base64) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = base64;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
 
+        const MAX_DIM = 1200;
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height *= MAX_DIM / width;
+            width = MAX_DIM;
+          }
+        } else {
+          if (height > MAX_DIM) {
+            width *= MAX_DIM / height;
+            height = MAX_DIM;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+    });
+  };
+
+  const handleFileUpload = (e, callback, aspect = 16 / 9) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Maximum image size is 10MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const compressed = await compressImage(reader.result);
+        setAdjustmentModal({
+          isOpen: true,
+          src: compressed,
+          callback,
+          aspect
+        });
+        setZoom(1);
+        setDragPos({ x: 0, y: 0 });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleReAdjust = (src, callback, aspect = 16 / 9) => {
+    setAdjustmentModal({
+      isOpen: true,
+      src,
+      callback,
+      aspect
+    });
+    setZoom(1);
+    setDragPos({ x: 0, y: 0 });
+  };
+
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - dragPos.x, y: e.clientY - dragPos.y });
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    setDragPos({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.touches[0].clientX - dragPos.x,
+        y: e.touches[0].clientY - dragPos.y
+      });
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    setDragPos({
+      x: e.touches[0].clientX - dragStart.x,
+      y: e.touches[0].clientY - dragStart.y
+    });
+  };
+
+  const confirmCrop = () => {
+    if (!adjustmentModal.src) return;
+    const img = new Image();
+    img.src = adjustmentModal.src;
     img.onload = () => {
-      const targetWidth = cropperModal.aspectRatio === 1 ? 512 : 1280;
-      const targetHeight = targetWidth / cropperModal.aspectRatio;
+      const targetAspect = adjustmentModal.aspect || 16 / 9;
+      const targetWidth = 1200;
+      const targetHeight = Math.round(targetWidth / targetAspect);
+
+      const canvas = document.createElement('canvas');
       canvas.width = targetWidth;
       canvas.height = targetHeight;
       const ctx = canvas.getContext('2d');
 
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, targetWidth, targetHeight);
+      const container = previewContainerRef.current;
+      const cWidth = container ? container.clientWidth : 480;
+      const cHeight = container ? container.clientHeight : Math.round(480 / targetAspect);
 
-      const baseScale = Math.max(targetWidth / img.width, targetHeight / img.height);
-      const currentScale = baseScale * cropperModal.zoom;
-
-      const drawWidth = img.width * currentScale;
-      const drawHeight = img.height * currentScale;
-      const drawX = (targetWidth - drawWidth) / 2 + cropperModal.pan.x;
-      const drawY = (targetHeight - drawHeight) / 2 + cropperModal.pan.y;
-
-      ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-
-      const croppedBase64 = canvas.toDataURL('image/webp', 0.85);
-      if (cropperModal.onSaveCallback) {
-        cropperModal.onSaveCallback(croppedBase64);
+      let baseW, baseH;
+      const imgAspect = img.width / img.height;
+      if (imgAspect > targetAspect) {
+        baseH = cHeight;
+        baseW = cHeight * imgAspect;
+      } else {
+        baseW = cWidth;
+        baseH = cWidth / imgAspect;
       }
-      setCropperModal(prev => ({ ...prev, isOpen: false }));
-      showToast('Image cropped and applied successfully!');
+
+      const scale = targetWidth / cWidth;
+      const finalW = baseW * zoom * scale;
+      const finalH = baseH * zoom * scale;
+
+      const drawX = (targetWidth - finalW) / 2 + (dragPos.x * scale);
+      const drawY = (targetHeight - finalH) / 2 + (dragPos.y * scale);
+
+      ctx.fillStyle = '#0a0a0c';
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+      ctx.drawImage(img, drawX, drawY, finalW, finalH);
+
+      const finalBase64 = canvas.toDataURL('image/jpeg', 0.85);
+      if (adjustmentModal.callback) {
+        adjustmentModal.callback(finalBase64);
+      }
+      setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16 / 9 });
+      setDragPos({ x: 0, y: 0 });
+      setZoom(1);
     };
   };
 
-  if (!localConfig) {
+  if (loading || !localConfig) {
     return (
-      <div className="admin-loading-screen">
-        <div className="spinner" />
-        <p>Loading BCT Studio workspace...</p>
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f7', color: '#1d1d1f' }}>
+        <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Loading admin dashboard...</div>
       </div>
     );
   }
 
+  // 6 Master Tabs
+  const tabs = [
+    { id: 'general', label: 'SYSTEM & SECURITY', icon: <Settings size={18} /> },
+    { id: 'homepage', label: 'HOME CONTENT', icon: <Home size={18} /> },
+    { id: 'blog', label: 'BLOG & ARTICLES', icon: <FileText size={18} /> },
+    { id: 'projects', label: 'PROJECTS & SOFTWARE', icon: <Package size={18} /> },
+    { id: 'users', label: 'USER MANAGEMENT', icon: <Users size={18} /> },
+    { id: 'analytics', label: 'TRAFFIC ANALYTICS', icon: <Activity size={18} /> }
+  ];
+
   return (
     <div className="admin-layout">
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {status && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="admin-toast"
-          >
-            <CheckCircle size={16} />
-            <span>{status}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Sidebar Navigation */}
-      <aside className={`admin-sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
+      <aside className={`admin-sidebar ${mobileMenuOpen ? 'open' : ''}`}>
         <div className="admin-brand">
           <div className="brand-icon-wrapper">
-            <img src={localConfig.appearance?.logoUrl || '/logobct.png'} alt="Logo" />
+            <img src={localConfig.general?.logoUrl || '/logobct.png'} alt="Logo" />
           </div>
           <div className="admin-brand-info">
-            <span className="admin-brand-title">BCT STUDIO</span>
-            <span className="admin-brand-subtitle">WORKSPACE ADMIN</span>
+            <span className="admin-brand-title">{localConfig.general?.siteTitle || 'BCT0902 Studio'}</span>
+            <span className="admin-brand-subtitle">System Administration</span>
           </div>
         </div>
 
         <nav className="admin-nav">
-          <button
-            className={`admin-nav-item ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('overview'); setIsMobileMenuOpen(false); }}
-          >
-            <Home size={18} />
-            <span>Overview</span>
-          </button>
-
-          <button
-            className={`admin-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }}
-          >
-            <Settings size={18} />
-            <span>System & Security</span>
-          </button>
-
-          <button
-            className={`admin-nav-item ${activeTab === 'homepage' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('homepage'); setIsMobileMenuOpen(false); }}
-          >
-            <Palette size={18} />
-            <span>Home Content</span>
-          </button>
-
-          <button
-            className={`admin-nav-item ${activeTab === 'socials' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('socials'); setIsMobileMenuOpen(false); }}
-          >
-            <Globe size={18} />
-            <span>Social Network</span>
-          </button>
-
-          <button
-            className={`admin-nav-item ${activeTab === 'projects' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('projects'); setIsMobileMenuOpen(false); }}
-          >
-            <Package size={18} />
-            <span>Projects & Tools</span>
-          </button>
-
-          <button
-            className={`admin-nav-item ${activeTab === 'blog' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('blog'); setIsMobileMenuOpen(false); }}
-          >
-            <FileText size={18} />
-            <span>Blog Articles</span>
-          </button>
-
-          <button
-            className={`admin-nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('analytics'); setIsMobileMenuOpen(false); }}
-          >
-            <Activity size={18} />
-            <span>Traffic Analytics</span>
-          </button>
-
-          <button
-            className={`admin-nav-item ${activeTab === 'users' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('users'); setIsMobileMenuOpen(false); }}
-          >
-            <Users size={18} />
-            <span>User Accounts</span>
-          </button>
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              className={`admin-nav-item ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setMobileMenuOpen(false);
+              }}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+            </button>
+          ))}
         </nav>
+
+        <div className="admin-sidebar-footer">
+          <button className="logout-btn" onClick={() => {
+            localStorage.removeItem('bct_admin_session');
+            window.location.href = '/login';
+          }}>
+            Sign Out
+          </button>
+        </div>
       </aside>
 
-      {/* Main Body */}
-      <div className="admin-content">
-        {/* Top Sticky Bar */}
+      {/* Main Content Area */}
+      <main className="admin-content">
         <header className="admin-header">
-          <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-            <Menu size={20} />
-          </button>
-
           <div className="admin-header-titles">
-            <h1>
-              {activeTab === 'overview' && 'SYSTEM OVERVIEW'}
-              {activeTab === 'settings' && 'SYSTEM & SECURITY'}
-              {activeTab === 'homepage' && 'HOME CONTENT'}
-              {activeTab === 'socials' && 'SOCIAL LINKS'}
-              {activeTab === 'projects' && 'PROJECTS & SOFTWARE'}
-              {activeTab === 'blog' && 'BLOG & ARTICLES'}
-              {activeTab === 'analytics' && 'TRAFFIC ANALYTICS'}
-              {activeTab === 'users' && 'USER MANAGEMENT'}
-            </h1>
-            <p>BCT Studio Administration Space</p>
+            <h1>{tabs.find(t => t.id === activeTab)?.label}</h1>
+            <p>BCT Studio Workspace Admin</p>
           </div>
 
           <div className="admin-header-actions">
-            <Link to="/" target="_blank" className="btn-ghost">
-              <ExternalLink size={16} />
-              <span>Live Site</span>
-            </Link>
-            <button
-              className="save-btn"
-              onClick={handleSave}
-              disabled={isSaving}
-            >
-              <Save size={16} />
+            <a href="/" target="_blank" rel="noopener noreferrer" className="btn-ghost">
+              <ExternalLink size={15} />
+              <span>Xem Web</span>
+            </a>
+            <button className="save-btn" onClick={handleSave} disabled={isSaving}>
+              <Save size={15} />
               <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
             </button>
           </div>
         </header>
 
-        {/* Tab Content Container */}
         <div className="admin-frame">
           <AnimatePresence mode="wait">
-            {/* TAB 0: OVERVIEW */}
-            {activeTab === 'overview' && (
-              <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                {/* Metric Summary Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
-                  <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }} />
-                      ACTIVE NOW
-                    </div>
-                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#10b981', letterSpacing: '-0.03em' }}>{activeNowCount}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Active in last 5 minutes</div>
-                  </div>
-
-                  <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>TOTAL LIFETIME VISITS</div>
-                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--apple-text-primary)', letterSpacing: '-0.03em' }}>
-                      {totalLifetimeHits > 0 ? totalLifetimeHits.toLocaleString() : analyticsData.length}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>All-time page view events</div>
-                  </div>
-
-                  <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>PUBLISHED PROJECTS</div>
-                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--apple-blue)', letterSpacing: '-0.03em' }}>{projectsList.length}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Active showcases and tools</div>
-                  </div>
-
-                  <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>BLOG POSTS</div>
-                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#f59e0b', letterSpacing: '-0.03em' }}>{blogPosts.length}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Published technology articles</div>
-                  </div>
-                </div>
-
-                {/* Quick Shortcuts */}
+            {}
+            {activeTab === 'general' && (
+              <motion.div key="general" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                {}
                 <div className="admin-card">
                   <div className="config-section-title">
-                    <Activity size={18} /> QUICK MANAGEMENT SHORTCUTS
+                    <ImageIcon size={18} /> LOGO & BRAND IDENTITY
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
-                    <button
-                      className="btn-secondary"
-                      onClick={() => setActiveTab('projects')}
-                      style={{ padding: '1.25rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}
-                    >
-                      <strong style={{ fontSize: '1rem', color: 'var(--apple-text-primary)' }}>📦 Manage Projects</strong>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>Publish and edit interactive case studies and tools</span>
-                    </button>
-                    <button
-                      className="btn-secondary"
-                      onClick={() => setActiveTab('blog')}
-                      style={{ padding: '1.25rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}
-                    >
-                      <strong style={{ fontSize: '1rem', color: 'var(--apple-text-primary)' }}>✍️ Write Blog Post</strong>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>Create technical insights with rich Markdown</span>
-                    </button>
-                    <button
-                      className="btn-secondary"
-                      onClick={() => setActiveTab('settings')}
-                      style={{ padding: '1.25rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}
-                    >
-                      <strong style={{ fontSize: '1rem', color: 'var(--apple-text-primary)' }}>🔒 Maintenance Control</strong>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>Lock or unlock individual site features</span>
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
 
-            {/* TAB 1: SETTINGS & MAINTENANCE */}
-            {activeTab === 'settings' && (
-              <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                {/* 1.1 Brand Identity */}
-                <div className="admin-card">
-                  <div className="config-section-title">
-                    <ImageIcon size={18} /> BRAND IDENTITY & LOGO
-                  </div>
-                  <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div style={{ width: '90px', height: '90px', borderRadius: '18px', background: '#f5f5f7', border: '1px solid var(--apple-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px' }}>
-                      <img src={localConfig.appearance?.logoUrl || '/logobct.png'} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ width: '80px', height: '80px', background: '#ffffff', borderRadius: '16px', border: '1px solid var(--apple-border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                      <img src={localConfig.appearance?.logoUrl || localConfig.general?.logoUrl || '/logobct.png'} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <label className="add-btn" style={{ cursor: 'pointer', width: 'fit-content' }}>
-                        <Upload size={15} /> Upload New Logo
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          onChange={(e) => handleFileUpload(e, (res) => updateNested('appearance', 'logoUrl', res), 1)}
-                        />
+                    <div style={{ display: 'flex', gap: '0.6rem' }}>
+                      <label className="btn-ghost" style={{ cursor: 'pointer' }}>
+                        <Upload size={15} />
+                        <span>Upload New Logo</span>
+                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, (res) => {
+                          updateNested('appearance', 'logoUrl', res);
+                          updateNested('general', 'logoUrl', res);
+                        }, 1)} />
                       </label>
-                      <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.8rem' }}>
-                        Recommended ratio 1:1 (Square PNG, SVG, or WebP with transparent background).
+                      {(localConfig.appearance?.logoUrl || localConfig.general?.logoUrl) && (
+                        <button className="btn-ghost" onClick={() => handleReAdjust(localConfig.appearance?.logoUrl || localConfig.general?.logoUrl, (res) => {
+                          updateNested('appearance', 'logoUrl', res);
+                          updateNested('general', 'logoUrl', res);
+                        }, 1)}>
+                          <Crop size={15} /> Adjust Position
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Brand Name / Site Title</label>
+                    <input type="text" className="admin-input" value={localConfig.general?.siteTitle || ''} onChange={(e) => updateNested('general', 'siteTitle', e.target.value)} placeholder="BCT0902 Studio" />
+                  </div>
+                </div>
+
+                <div className="admin-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                      <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
+                        <Globe size={18} /> SOCIAL NETWORKS ({(localConfig.social_links || []).length})
+                      </div>
+                      <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
+                        Choose preset brand icons or upload custom icons, then enter URL.
                       </p>
                     </div>
+                    <button className="add-btn" onClick={() => {
+                      const newSocials = [...(localConfig.social_links || [])];
+                      newSocials.push({ icon: 'Globe', url: '', customIcon: '' });
+                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                    }}>
+                      <Plus size={15} /> Add Social Link
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {(localConfig.social_links || []).map((social, idx) => (
+                      <div key={idx} className="social-compact-row">
+                        <div style={{ position: 'relative' }}>
+                          <button
+                            type="button"
+                            className="social-logo-trigger"
+                            onClick={() => setActiveIconPickerIdx(activeIconPickerIdx === idx ? null : idx)}
+                            title="Click to change icon"
+                          >
+                            {social.customIcon ? (
+                              <img src={social.customIcon} alt="social-logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            ) : social.icon ? (
+                              <SocialIcon name={social.icon} size={22} />
+                            ) : (
+                              <Globe size={22} />
+                            )}
+                          </button>
+
+                          {activeIconPickerIdx === idx && (
+                            <div className="social-picker-dropdown">
+                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.6rem' }}>
+                                SELECT BRAND PRESET
+                              </div>
+                              <div className="social-picker-grid">
+                                {SOCIAL_PLATFORMS.map((platform) => (
+                                  <button
+                                    key={platform.name}
+                                    type="button"
+                                    className="social-preset-btn"
+                                    onClick={() => {
+                                      const newSocials = [...localConfig.social_links];
+                                      newSocials[idx] = { ...newSocials[idx], icon: platform.icon, customIcon: '' };
+                                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                                      setActiveIconPickerIdx(null);
+                                    }}
+                                  >
+                                    <SocialIcon name={platform.icon} size={18} color={platform.color} />
+                                    <span>{platform.name}</span>
+                                  </button>
+                                ))}
+                              </div>
+
+                              <div style={{ borderTop: '1px solid var(--apple-border)', paddingTop: '0.65rem', marginTop: '0.5rem' }}>
+                                <label className="btn-ghost" style={{ width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.5rem' }}>
+                                  <Upload size={14} />
+                                  <span>Upload Custom Logo</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
+                                    onChange={(e) => handleFileUpload(e, (res) => {
+                                      const newSocials = [...localConfig.social_links];
+                                      newSocials[idx] = { ...newSocials[idx], customIcon: res, icon: '' };
+                                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                                      setActiveIconPickerIdx(null);
+                                    }, 1)}
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <input
+                          type="url"
+                          className="admin-input"
+                          placeholder="https://..."
+                          value={social.url || ''}
+                          style={{ flex: 1 }}
+                          onChange={(e) => {
+                            const newSocials = [...localConfig.social_links];
+                            newSocials[idx] = { ...newSocials[idx], url: e.target.value };
+                            setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                          }}
+                        />
+
+                        <button
+                          type="button"
+                          className="delete-btn"
+                          onClick={() => {
+                            const newSocials = (localConfig.social_links || []).filter((_, i) => i !== idx);
+                            setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                          }}
+                          aria-label="Delete social link"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* 1.2 Route Maintenance Registry */}
                 <div className="admin-card">
                   <div className="config-section-title">
-                    <Lock size={18} /> ROUTE MAINTENANCE CONTROL
+                    <Palette size={18} /> SYSTEM VISUAL EFFECTS
+                  </div>
+
+                  <div className="apple-toggle-row">
+                    <div className="apple-toggle-info">
+                      <h4>Background Blur Effect</h4>
+                      <p>Translucent glass blur depth on homepage</p>
+                    </div>
+                    <button
+                      type="button"
+                      className={`apple-switch ${localConfig.appearance?.backgroundBlur ? 'active' : ''}`}
+                      onClick={() => updateNested('appearance', 'backgroundBlur', !localConfig.appearance?.backgroundBlur)}
+                    >
+                      <div className="apple-switch-handle" />
+                    </button>
+                  </div>
+
+                  <div className="apple-toggle-row">
+                    <div className="apple-toggle-info">
+                      <h4>Particle Glow Effects</h4>
+                      <p>Floating luminous particles in 3D space</p>
+                    </div>
+                    <button
+                      type="button"
+                      className={`apple-switch ${localConfig.appearance?.particleEffects ? 'active' : ''}`}
+                      onClick={() => updateNested('appearance', 'particleEffects', !localConfig.appearance?.particleEffects)}
+                    >
+                      <div className="apple-switch-handle" />
+                    </button>
+                  </div>
+
+                  <div className="apple-toggle-row">
+                    <div className="apple-toggle-info">
+                      <h4>Geometric Grid Overlay</h4>
+                      <p>Subtle matrix grid pattern across viewport</p>
+                    </div>
+                    <button
+                      type="button"
+                      className={`apple-switch ${localConfig.appearance?.gridOverlay ? 'active' : ''}`}
+                      onClick={() => updateNested('appearance', 'gridOverlay', !localConfig.appearance?.gridOverlay)}
+                    >
+                      <div className="apple-switch-handle" />
+                    </button>
+                  </div>
+                </div>
+
+                {}
+                <div className="admin-card">
+                  <div className="config-section-title">
+                    <Lock size={18} /> ROUTE MAINTENANCE CONTROLS
                   </div>
                   <p style={{ margin: '-0.75rem 0 1.25rem 0', color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
-                    Toggle maintenance mode for individual routes. When locked, guests will see the maintenance screen.
+                    Toggle switches to lock individual site routes for maintenance. When locked, guests will see the maintenance screen.
                   </p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -677,10 +868,10 @@ const AdminDashboard = () => {
               </motion.div>
             )}
 
-            {/* TAB 2: HOME CONTENT */}
+            {}
             {activeTab === 'homepage' && (
               <motion.div key="homepage" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                {/* Sub-Tabs Bar */}
+                {/* Segmented Sub-Tabs Bar */}
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.75rem', background: '#ffffff', padding: '6px', borderRadius: '14px', border: '1px solid var(--apple-border)', width: 'fit-content', boxShadow: '0 1px 3px rgba(0,0,0,0.03)', flexWrap: 'wrap' }}>
                   <button
                     type="button"
@@ -713,7 +904,7 @@ const AdminDashboard = () => {
                   </button>
                 </div>
 
-                {/* SubTab 1: Filmstrip */}
+                {/* SubTab 1: Digital Filmstrip */}
                 {homepageSubTab === 'filmstrip' && (
                   <div className="admin-card">
                     <div className="config-section-title">
@@ -792,7 +983,7 @@ const AdminDashboard = () => {
                           <Package size={18} /> ECOSYSTEM APPLICATIONS ({(localConfig.apps || []).length})
                         </div>
                         <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
-                          Choose official brand presets or upload custom brand logos.
+                          Select official brand presets or upload custom logo images.
                         </p>
                       </div>
                       <button className="add-btn" onClick={() => {
@@ -812,7 +1003,7 @@ const AdminDashboard = () => {
                               type="button"
                               className="social-logo-trigger"
                               onClick={() => setActiveAppLogoPickerIdx(activeAppLogoPickerIdx === idx ? null : idx)}
-                              title="Click to select preset logo or upload custom image"
+                              title="Click to change brand logo or upload image"
                             >
                               {renderAppLogo(app)}
                             </button>
@@ -870,14 +1061,30 @@ const AdminDashboard = () => {
                             )}
                           </div>
 
+                          {app.iconUrl && (
+                            <button
+                              type="button"
+                              className="btn-ghost"
+                              style={{ padding: '0.45rem', width: '36px', height: '36px', minHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              onClick={() => handleReAdjust(app.iconUrl, (res) => {
+                                const newApps = [...(localConfig.apps || [])];
+                                newApps[idx] = { ...newApps[idx], iconUrl: res };
+                                setLocalConfig(prev => ({ ...prev, apps: newApps }));
+                              }, 1)}
+                              title="Adjust icon crop"
+                            >
+                              <Crop size={14} />
+                            </button>
+                          )}
+
                           <input
                             type="text"
                             className="admin-input"
-                            style={{ flex: 1 }}
-                            placeholder="Application Name (e.g. Antigravity, Github)..."
+                            placeholder="Application name (e.g. Antigravity, GitHub, VS Code...)"
                             value={app.name || ''}
+                            style={{ flex: 1 }}
                             onChange={(e) => {
-                              const newApps = [...localConfig.apps];
+                              const newApps = [...(localConfig.apps || [])];
                               newApps[idx] = { ...newApps[idx], name: e.target.value };
                               setLocalConfig(prev => ({ ...prev, apps: newApps }));
                             }}
@@ -887,11 +1094,12 @@ const AdminDashboard = () => {
                             type="button"
                             className="delete-btn"
                             onClick={() => {
-                              const newApps = localConfig.apps.filter((_, i) => i !== idx);
+                              const newApps = (localConfig.apps || []).filter((_, i) => i !== idx);
                               setLocalConfig(prev => ({ ...prev, apps: newApps }));
                             }}
+                            aria-label={`Delete application ${app.name || ''}`}
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       ))}
@@ -899,46 +1107,52 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
-                {/* SubTab 3: Quotes */}
+                {/* SubTab 3: Homepage Quotes */}
                 {homepageSubTab === 'quotes' && (
                   <div className="admin-card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                      <div className="config-section-title" style={{ margin: 0 }}>
-                        <MessageSquare size={18} /> HOMEPAGE INSPIRATIONAL QUOTES ({(localConfig.content?.quotes || []).length})
+                      <div>
+                        <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
+                          <MessageSquare size={18} /> HOMEPAGE INSPIRATIONAL QUOTES ({(localConfig.content?.quotes || []).length})
+                        </div>
+                        <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
+                          Quotes are displayed dynamically in homepage banners and footer.
+                        </p>
                       </div>
                       <button className="add-btn" onClick={() => {
-                        const quotes = [...(localConfig.content?.quotes || [])];
-                        quotes.push('');
-                        updateNested('content', 'quotes', quotes);
+                        const newQuotes = [...(localConfig.content?.quotes || [])];
+                        newQuotes.push('New inspirational quote...');
+                        updateNested('content', 'quotes', newQuotes);
                       }}>
                         <Plus size={15} /> Add Quote
                       </button>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                       {(localConfig.content?.quotes || []).map((quote, idx) => (
-                        <div key={idx} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                          <input
-                            type="text"
-                            className="admin-input"
-                            style={{ flex: 1 }}
-                            placeholder="Enter quote and author..."
+                        <div key={idx} className="quote-item-card">
+                          <span className="quote-index">{String(idx + 1).padStart(2, '0')}</span>
+                          <textarea
+                            className="quote-edit-input"
                             value={quote}
                             onChange={(e) => {
-                              const quotes = [...localConfig.content.quotes];
-                              quotes[idx] = e.target.value;
-                              updateNested('content', 'quotes', quotes);
+                              const newQuotes = [...(localConfig.content?.quotes || [])];
+                              newQuotes[idx] = e.target.value;
+                              updateNested('content', 'quotes', newQuotes);
                             }}
+                            rows={2}
+                            aria-label={`Quote #${idx + 1}`}
                           />
                           <button
                             type="button"
                             className="delete-btn"
                             onClick={() => {
-                              const quotes = localConfig.content.quotes.filter((_, i) => i !== idx);
-                              updateNested('content', 'quotes', quotes);
+                              const newQuotes = (localConfig.content?.quotes || []).filter((_, i) => i !== idx);
+                              updateNested('content', 'quotes', newQuotes);
                             }}
+                            aria-label={`Delete quote #${idx + 1}`}
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       ))}
@@ -948,275 +1162,57 @@ const AdminDashboard = () => {
               </motion.div>
             )}
 
-            {/* TAB 3: SOCIAL LINKS */}
-            {activeTab === 'socials' && (
-              <motion.div key="socials" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                <div className="admin-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div>
-                      <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
-                        <Globe size={18} /> SOCIAL PLATFORMS & LINKS ({(localConfig.social_links || []).length})
-                      </div>
-                      <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
-                        Select preset brand icons or upload custom icons, then enter destination URL.
-                      </p>
-                    </div>
-                    <button className="add-btn" onClick={() => {
-                      const newSocials = [...(localConfig.social_links || [])];
-                      newSocials.push({ name: 'Website', icon: 'Globe', url: 'https://', color: '#0071e3', isVisible: true });
-                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                    }}>
-                      <Plus size={15} /> Add Social Link
-                    </button>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                    {(localConfig.social_links || []).map((social, idx) => (
-                      <div key={idx} className="social-compact-row">
-                        <div style={{ position: 'relative' }}>
-                          <button
-                            type="button"
-                            className="social-logo-trigger"
-                            onClick={() => setActiveSocialPickerIdx(activeSocialPickerIdx === idx ? null : idx)}
-                            title="Click to select preset icon or upload custom image"
-                          >
-                            <SocialIcon icon={social.icon} iconUrl={social.iconUrl} size={18} color={social.color} />
-                          </button>
-
-                          {activeSocialPickerIdx === idx && (
-                            <div className="social-picker-dropdown">
-                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.6rem' }}>
-                                SELECT PRESET BRAND
-                              </div>
-                              <div className="social-picker-grid">
-                                {SOCIAL_PLATFORMS.map((platform) => (
-                                  <button
-                                    key={platform.name}
-                                    type="button"
-                                    className="social-preset-btn"
-                                    onClick={() => {
-                                      const newSocials = [...localConfig.social_links];
-                                      newSocials[idx] = {
-                                        ...newSocials[idx],
-                                        name: platform.name,
-                                        icon: platform.icon,
-                                        color: platform.color,
-                                        iconUrl: ''
-                                      };
-                                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                                      setActiveSocialPickerIdx(null);
-                                    }}
-                                  >
-                                    <SocialIcon icon={platform.icon} size={18} color={platform.color} />
-                                    <span>{platform.name}</span>
-                                  </button>
-                                ))}
-                              </div>
-
-                              <div style={{ borderTop: '1px solid var(--apple-border)', paddingTop: '0.65rem', marginTop: '0.5rem' }}>
-                                <label className="btn-ghost" style={{ width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.5rem' }}>
-                                  <Upload size={14} />
-                                  <span>Upload Custom Icon</span>
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    style={{ display: 'none' }}
-                                    onChange={(e) => handleFileUpload(e, (res) => {
-                                      const newSocials = [...localConfig.social_links];
-                                      newSocials[idx] = { ...newSocials[idx], iconUrl: res, icon: '' };
-                                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                                      setActiveSocialPickerIdx(null);
-                                    }, 1)}
-                                  />
-                                </label>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <input
-                          type="url"
-                          className="admin-input"
-                          style={{ flex: 1 }}
-                          placeholder="https://..."
-                          value={social.url || ''}
-                          onChange={(e) => {
-                            const newSocials = [...localConfig.social_links];
-                            newSocials[idx] = { ...newSocials[idx], url: e.target.value };
-                            setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                          }}
-                        />
-
-                        <button
-                          type="button"
-                          className="delete-btn"
-                          onClick={() => {
-                            const newSocials = localConfig.social_links.filter((_, i) => i !== idx);
-                            setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                          }}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* TAB 4: PROJECTS & SOFTWARE */}
-            {activeTab === 'projects' && (
-              <motion.div key="projects" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                <div className="admin-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div>
-                      <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
-                        <Package size={18} /> PROJECTS & SOFTWARE REPOSITORY ({projectsList.length})
-                      </div>
-                      <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
-                        Create, publish, and edit interactive case studies and tools.
-                      </p>
-                    </div>
-                    <Link to="/admin/projects/new" className="add-btn" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                      <Plus size={15} /> New Project
-                    </Link>
-                  </div>
-
-                  <div className="admin-table-container">
-                    <table className="admin-table">
-                      <thead>
-                        <tr>
-                          <th style={{ width: '60px', textAlign: 'center' }}>NO.</th>
-                          <th>PROJECT</th>
-                          <th>TECH STACK</th>
-                          <th style={{ width: '130px', textAlign: 'right' }}>ACTIONS</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {projectsList.length === 0 ? (
-                          <tr>
-                            <td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: 'var(--apple-text-secondary)' }}>
-                              No projects found. Click '+ New Project' to create your first case study.
-                            </td>
-                          </tr>
-                        ) : (
-                          projectsList.map((proj, idx) => (
-                            <tr key={proj.id}>
-                              <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--apple-text-muted)', fontSize: '0.85rem' }}>
-                                #{idx + 1}
-                              </td>
-                              <td>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                  <div style={{ width: '56px', height: '40px', borderRadius: '8px', overflow: 'hidden', background: '#f5f5f7', border: '1px solid var(--apple-border)', flexShrink: 0 }}>
-                                    <img
-                                      src={proj.thumbnail || proj.coverImage || proj.image || '/logobct.png'}
-                                      alt={proj.title}
-                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                      onError={(e) => { e.currentTarget.src = '/logobct.png'; }}
-                                    />
-                                  </div>
-                                  <div>
-                                    <div style={{ fontWeight: 600, color: 'var(--apple-text-primary)' }}>{proj.title}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)' }}>{proj.category || 'Tool'} · {proj.version || 'v1.0.0'}</div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                  {(Array.isArray(proj.tags) ? proj.tags : (proj.tech || [])).slice(0, 3).map((t, i) => (
-                                    <span key={i} style={{ fontSize: '0.7rem', padding: '2px 8px', background: 'rgba(0,0,0,0.04)', borderRadius: '4px', color: 'var(--apple-text-secondary)', border: '1px solid var(--apple-border)' }}>
-                                      {t}
-                                    </span>
-                                  ))}
-                                </div>
-                              </td>
-                              <td style={{ textAlign: 'right' }}>
-                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                  <Link to={`/admin/projects/edit/${proj.id}`} className="btn-ghost" style={{ padding: '0.4rem 0.7rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                    <Edit size={14} /> Edit
-                                  </Link>
-                                  <button className="delete-btn" onClick={() => deleteProjectRecord(proj.id)}>
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* TAB 5: BLOG ARTICLES */}
+            {}
             {activeTab === 'blog' && (
               <motion.div key="blog" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                 <div className="admin-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div>
-                      <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
-                        <FileText size={18} /> BLOG & INSIGHTS MANAGER ({blogPosts.length})
-                      </div>
-                      <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
-                        Write and publish articles with rich Markdown styling.
-                      </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div className="config-section-title" style={{ margin: 0 }}>
+                      <FileText size={18} /> BLOG ARTICLES ({blogPosts.length})
                     </div>
-                    <Link to="/admin/cms/new" className="add-btn" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                      <Plus size={15} /> New Article
-                    </Link>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <Link to="/admin/cms/new" className="add-btn" style={{ textDecoration: 'none' }}>
+                        <Plus size={15} /> Write New Article
+                      </Link>
+                      <button className="btn-ghost" onClick={fetchBlogPosts}>
+                        <Activity size={15} /> Refresh
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="admin-table-container">
-                    <table className="admin-table">
+                  <div className="users-table-container">
+                    <table className="users-table">
                       <thead>
                         <tr>
-                          <th style={{ width: '60px', textAlign: 'center' }}>NO.</th>
                           <th>ARTICLE</th>
                           <th>CATEGORY</th>
                           <th>DATE</th>
-                          <th style={{ width: '130px', textAlign: 'right' }}>ACTIONS</th>
+                          <th style={{ textAlign: 'right' }}>ACTIONS</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {blogPosts.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: 'var(--apple-text-secondary)' }}>
-                              No blog posts found. Click '+ New Article' to create one.
+                        {blogPosts.map(post => (
+                          <tr key={post.id}>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <img src={post.thumbnail || '/placeholder.png'} style={{ width: '42px', height: '42px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--apple-border)' }} alt={post.title || 'Thumbnail'} />
+                                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{post.title}</div>
+                              </div>
+                            </td>
+                            <td>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: post.published ? 'var(--apple-green)' : '#f59e0b', background: post.published ? 'var(--apple-green-subtle)' : 'rgba(245, 158, 11, 0.1)', padding: '3px 8px', borderRadius: '980px' }}>
+                                {post.category || 'Tech'} · {post.published ? 'Published' : 'Draft'}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: '0.82rem', color: 'var(--apple-text-secondary)' }}>{post.date}</td>
+                            <td>
+                              <div className="action-btns" style={{ justifyContent: 'flex-end' }}>
+                                <Link to={`/admin/cms/${post.id}`} className="edit-btn" aria-label={`Edit ${post.title}`}><Edit size={15} /></Link>
+                                <button className="delete-btn" onClick={() => deleteBlogPost(post.id)} aria-label={`Delete ${post.title}`}><Trash2 size={15} /></button>
+                              </div>
                             </td>
                           </tr>
-                        ) : (
-                          blogPosts.map((post, idx) => (
-                            <tr key={post.id}>
-                              <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--apple-text-muted)', fontSize: '0.85rem' }}>
-                                #{idx + 1}
-                              </td>
-                              <td>
-                                <div style={{ fontWeight: 600, color: 'var(--apple-text-primary)' }}>{post.title}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)' }}>{post.slug || post.id}</div>
-                              </td>
-                              <td>
-                                <span style={{ fontSize: '0.75rem', padding: '3px 8px', background: 'rgba(0,113,227,0.08)', color: 'var(--apple-blue)', borderRadius: '6px', fontWeight: 600 }}>
-                                  {post.category || 'Tech'}
-                                </span>
-                              </td>
-                              <td style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>
-                                {post.createdAt?.toDate ? post.createdAt.toDate().toLocaleDateString() : 'Recent'}
-                              </td>
-                              <td style={{ textAlign: 'right' }}>
-                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                  <Link to={`/admin/cms/${post.id}`} className="btn-ghost" style={{ padding: '0.4rem 0.7rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                    <Edit size={14} /> Edit
-                                  </Link>
-                                  <button className="delete-btn" onClick={() => deleteBlogPost(post.id)}>
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        )}
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -1224,7 +1220,133 @@ const AdminDashboard = () => {
               </motion.div>
             )}
 
-            {/* TAB 6: TRAFFIC ANALYTICS */}
+            {}
+            {activeTab === 'projects' && (
+              <motion.div key="projects" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <div className="admin-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div className="config-section-title" style={{ margin: 0 }}>
+                      <Package size={18} /> PROJECTS & SOFTWARE REPOSITORY ({projectsList.length})
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <Link to="/admin/projects/new" className="add-btn" style={{ textDecoration: 'none' }}>
+                        <Plus size={15} /> New Project
+                      </Link>
+                      <button className="btn-ghost" onClick={fetchProjects}>
+                        <Activity size={15} /> Refresh
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="users-table-container">
+                    <table className="users-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '70px', textAlign: 'center' }}>STT</th>
+                          <th>PROJECT</th>
+                          <th>TECH STACK</th>
+                          <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {projectsList.map((proj, idx) => (
+                          <tr key={proj.id}>
+                            <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--apple-blue)', fontSize: '0.95rem' }}>
+                              {proj.order !== undefined && proj.order !== null && proj.order !== '' ? proj.order : (idx + 1)}
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <img
+                                  src={proj.thumbnail || proj.coverImage || proj.image || '/logobct.png'}
+                                  style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover', border: '1px solid var(--apple-border)' }}
+                                  alt={proj.title || 'Project thumbnail'}
+                                  onError={(e) => { e.target.src = '/logobct.png'; }}
+                                />
+                                <div>
+                                  <div style={{ fontWeight: 600, fontSize: '0.92rem' }}>{proj.title}</div>
+                                  <div style={{ fontSize: '0.78rem', color: 'var(--apple-text-secondary)' }}>{proj.category}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                {(Array.isArray(proj.tags) ? proj.tags : []).map((t, i) => (
+                                  <span key={i} className="path-chip">{t}</span>
+                                ))}
+                              </div>
+                            </td>
+                            <td>
+                              <div className="action-btns" style={{ justifyContent: 'flex-end' }}>
+                                <Link to={`/admin/projects/edit/${proj.id}`} className="edit-btn" aria-label={`Edit ${proj.title}`}><Edit size={15} /></Link>
+                                <button className="delete-btn" onClick={() => deleteProjectRecord(proj.id)} aria-label={`Delete ${proj.title}`}><Trash2 size={15} /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* TAB 5: USER ACCOUNTS DIRECTORY */}
+            {activeTab === 'users' && (
+              <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <div className="admin-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div className="config-section-title" style={{ margin: 0 }}>
+                      <Users size={18} /> USER ACCOUNTS DIRECTORY ({usersList.length})
+                    </div>
+                    <button className="add-btn" onClick={() => setUserModal({ isOpen: true, mode: 'add', data: { role: 'user' } })}>
+                      <Plus size={15} /> Add User
+                    </button>
+                  </div>
+
+                  <div className="users-table-container">
+                    <table className="users-table">
+                      <thead>
+                        <tr>
+                          <th>IDENTITY</th>
+                          <th>EMAIL</th>
+                          <th>ROLE</th>
+                          <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {usersList.map(user => (
+                          <tr key={user.id}>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                                <img src={user.photoURL || '/logobct.png'} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid var(--apple-border)' }} alt={user.displayName} />
+                                <div>
+                                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{user.displayName}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--apple-blue)' }}>@{user.username}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ fontSize: '0.85rem' }}>{user.email}</td>
+                            <td>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '3px 8px', borderRadius: '980px', background: user.role === 'admin' ? 'var(--apple-blue-subtle)' : 'rgba(0,0,0,0.05)', color: user.role === 'admin' ? 'var(--apple-blue)' : 'var(--apple-text-secondary)' }}>
+                                {user.role === 'admin' ? 'Admin' : 'Member'}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="action-btns" style={{ justifyContent: 'flex-end' }}>
+                                <button className="edit-btn" onClick={() => setUserModal({ isOpen: true, mode: 'edit', data: user })}><Edit size={15} /></button>
+                                <button className="delete-btn" onClick={() => deleteUserRecord(user.id)}><Trash2 size={15} /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {}
             {activeTab === 'analytics' && (
               <motion.div key="analytics" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                 {/* Metric Summary Cards */}
@@ -1232,24 +1354,22 @@ const AdminDashboard = () => {
                   <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
                     <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }} />
-                      ACTIVE NOW
+                      ACTIVE CONCURRENT VISITORS
                     </div>
                     <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#10b981', letterSpacing: '-0.03em' }}>{activeNowCount}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Active in last 5 minutes</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Active in the last 5 minutes</div>
                   </div>
 
                   <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
                     <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>TOTAL LIFETIME VISITS</div>
-                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--apple-text-primary)', letterSpacing: '-0.03em' }}>
-                      {totalLifetimeHits > 0 ? totalLifetimeHits.toLocaleString() : analyticsData.length}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Total recorded page views</div>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--apple-text-primary)', letterSpacing: '-0.03em' }}>{totalLifetimeHits > 0 ? totalLifetimeHits.toLocaleString() : analyticsData.length}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>All-time page view events</div>
                   </div>
 
                   <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
                     <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>UNIQUE VISITORS</div>
                     <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--apple-blue)', letterSpacing: '-0.03em' }}>{groupedVisitors.length}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Grouped by client visitor session</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Grouped by browser sessions</div>
                   </div>
                 </div>
 
@@ -1258,10 +1378,10 @@ const AdminDashboard = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                     <div>
                       <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
-                        <Activity size={18} /> REAL-TIME TRAFFIC LOGS
+                        <Activity size={18} /> REALTIME TRAFFIC LOGS
                       </div>
                       <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
-                        Automatically updates in real time as visitors navigate the site.
+                        Real-time streaming logs updated as visitors navigate the site.
                       </p>
                     </div>
 
@@ -1277,211 +1397,320 @@ const AdminDashboard = () => {
                           className={`filter-pill ${analyticsFilter === 'desktop' ? 'active' : ''}`}
                           onClick={() => { setAnalyticsFilter('desktop'); setTrafficPage(1); }}
                         >
-                          Desktop ({groupedVisitors.filter(v => !v.isMobile).length})
+                          Desktop 💻 ({groupedVisitors.filter(v => !v.isMobile).length})
                         </button>
                         <button
                           className={`filter-pill ${analyticsFilter === 'mobile' ? 'active' : ''}`}
                           onClick={() => { setAnalyticsFilter('mobile'); setTrafficPage(1); }}
                         >
-                          Mobile ({groupedVisitors.filter(v => v.isMobile).length})
+                          Mobile 📱 ({groupedVisitors.filter(v => v.isMobile).length})
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  <div className="admin-table-container">
-                    <table className="admin-table">
-                      <thead>
-                        <tr>
-                          <th style={{ width: '80px' }}>STATUS</th>
-                          <th>VISITOR / IP</th>
-                          <th>DEVICE & OS</th>
-                          <th>LOCATION</th>
-                          <th style={{ width: '80px', textAlign: 'center' }}>HITS</th>
-                          <th>LAST ACTIVE</th>
-                          <th>VISITED PATHS</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredVisitors.length === 0 ? (
-                          <tr>
-                            <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--apple-text-secondary)' }}>
-                              No traffic recorded yet.
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredVisitors.slice((trafficPage - 1) * 20, trafficPage * 20).map((visitor) => {
-                            const nowSec = Math.floor(Date.now() / 1000);
-                            const lastSec = visitor.lastTimestamp?.seconds || (visitor.lastTimestamp ? Math.floor(new Date(visitor.lastTimestamp).getTime() / 1000) : 0);
-                            const isOnline = (nowSec - lastSec) <= 300;
+                  {(() => {
+                    const totalTrafficPages = Math.max(1, Math.ceil(filteredVisitors.length / TRAFFIC_PER_PAGE));
+                    const paginatedVisitors = filteredVisitors.slice((trafficPage - 1) * TRAFFIC_PER_PAGE, trafficPage * TRAFFIC_PER_PAGE);
 
-                            return (
-                              <tr key={visitor.visitorId}>
-                                <td>
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 600, color: isOnline ? '#10b981' : 'var(--apple-text-muted)' }}>
-                                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: isOnline ? '#10b981' : '#94a3b8', display: 'inline-block' }} />
-                                    {isOnline ? 'ONLINE' : 'OFFLINE'}
+                    return (
+                      <>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          {paginatedVisitors.map((v, i) => (
+                            <div key={v.visitorId || i} className="visitor-row-card">
+                              <div className="visitor-header">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
+                                  {v.isAdmin ? (
+                                    <span className="visitor-badge-admin">Admin</span>
+                                  ) : (
+                                    <span className="visitor-badge-guest">Guest #{String(v.visitorId || 'guest').slice(-6).toUpperCase()}</span>
+                                  )}
+                                  <span style={{ fontSize: '0.85rem', color: 'var(--apple-text-secondary)' }}>
+                                    {v.deviceLabel}
                                   </span>
-                                </td>
-                                <td>
-                                  <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--apple-text-primary)' }}>
-                                    {visitor.isAdmin ? '👑 Admin (Active)' : (visitor.ip || 'Anonymous Client')}
-                                  </div>
-                                  <div style={{ fontSize: '0.7rem', color: 'var(--apple-text-muted)' }}>{visitor.visitorId}</div>
-                                </td>
-                                <td>
-                                  <span style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>{visitor.deviceLabel}</span>
-                                </td>
-                                <td>
-                                  <span style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>
-                                    {visitor.city ? `${visitor.city}, ${visitor.country}` : (visitor.country || 'Global Internet')}
+                                  {(v.city || v.country) && (
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--apple-green)', background: 'var(--apple-green-subtle)', padding: '2px 8px', borderRadius: '980px', fontWeight: 600 }}>
+                                      📍 {[v.city, v.country].filter(Boolean).join(', ')} {v.countryCode === 'VN' ? '🇻🇳' : ''}
+                                    </span>
+                                  )}
+                                  {v.ip && (
+                                    <code style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', background: 'rgba(0,0,0,0.04)', padding: '2px 6px', borderRadius: '4px' }}>
+                                      🌐 {v.ip}
+                                    </code>
+                                  )}
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                                  <span className="visitor-hits">{v.totalHits} views</span>
+                                  <span style={{ fontSize: '0.78rem', color: 'var(--apple-text-secondary)' }}>
+                                    {v.lastTimestamp?.toDate ? v.lastTimestamp.toDate().toLocaleString() : 'Just now'}
                                   </span>
-                                </td>
-                                <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--apple-blue)' }}>
-                                  {visitor.totalHits}
-                                </td>
-                                <td style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>
-                                  {visitor.lastTimestamp?.seconds ? new Date(visitor.lastTimestamp.seconds * 1000).toLocaleTimeString() : 'Just now'}
-                                </td>
-                                <td>
-                                  <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                                    {Array.from(visitor.paths).slice(0, 3).map((p, i) => (
-                                      <code key={i} style={{ fontSize: '0.7rem', padding: '1px 6px', background: 'rgba(0,0,0,0.04)', borderRadius: '4px' }}>
-                                        {p}
-                                      </code>
-                                    ))}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* TAB 7: USERS */}
-            {activeTab === 'users' && (
-              <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                <div className="admin-card">
-                  <div className="config-section-title">
-                    <Users size={18} /> USER DIRECTORY & ACCESS CONTROL ({usersList.length})
-                  </div>
-
-                  <div className="admin-table-container">
-                    <table className="admin-table">
-                      <thead>
-                        <tr>
-                          <th>USER</th>
-                          <th>EMAIL</th>
-                          <th>ROLE</th>
-                          <th>JOINED DATE</th>
-                          <th style={{ width: '80px', textAlign: 'right' }}>ACTIONS</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {usersList.map((user) => (
-                          <tr key={user.id}>
-                            <td>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <img src={user.photoURL || '/logobct.png'} alt={user.displayName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
-                                <div style={{ fontWeight: 600, color: 'var(--apple-text-primary)' }}>{user.displayName || 'Unnamed User'}</div>
+                                </div>
                               </div>
-                            </td>
-                            <td style={{ color: 'var(--apple-text-secondary)' }}>{user.email}</td>
-                            <td>
-                              <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '6px', background: user.role === 'admin' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(0, 113, 227, 0.1)', color: user.role === 'admin' ? 'var(--apple-red)' : 'var(--apple-blue)', fontWeight: 600 }}>
-                                {user.role?.toUpperCase() || 'MEMBER'}
-                              </span>
-                            </td>
-                            <td style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>
-                              {user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString() : 'N/A'}
-                            </td>
-                            <td style={{ textAlign: 'right' }}>
-                              <button className="delete-btn" onClick={() => deleteUserRecord(user.id)}>
-                                <Trash2 size={15} />
+
+                              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.35rem' }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginRight: '0.25rem' }}>Visited paths:</span>
+                                {Array.from(v.paths).map((p, pIdx) => (
+                                  <span key={pIdx} className="path-chip">{p}</span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {totalTrafficPages > 1 && (
+                          <div className="apple-pagination-bar">
+                            <div className="pagination-info">
+                              Showing {((trafficPage - 1) * TRAFFIC_PER_PAGE) + 1}–{Math.min(trafficPage * TRAFFIC_PER_PAGE, filteredVisitors.length)} of {filteredVisitors.length} visitors
+                            </div>
+                            <div className="pagination-controls">
+                              <button
+                                className="btn-ghost"
+                                style={{ padding: '0.35rem 0.85rem', fontSize: '0.78rem' }}
+                                disabled={trafficPage === 1}
+                                onClick={() => setTrafficPage(p => Math.max(1, p - 1))}
+                              >
+                                ‹ Prev
                               </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                              <div className="pagination-pills">
+                                {Array.from({ length: totalTrafficPages }).map((_, pIdx) => {
+                                  const pageNum = pIdx + 1;
+                                  return (
+                                    <button
+                                      key={pageNum}
+                                      className={`filter-pill ${trafficPage === pageNum ? 'active' : ''}`}
+                                      style={{ minWidth: '32px', padding: '0.35rem 0.5rem', textAlign: 'center' }}
+                                      onClick={() => setTrafficPage(pageNum)}
+                                    >
+                                      {pageNum}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <button
+                                className="btn-ghost"
+                                style={{ padding: '0.35rem 0.85rem', fontSize: '0.78rem' }}
+                                disabled={trafficPage === totalTrafficPages}
+                                onClick={() => setTrafficPage(p => Math.min(totalTrafficPages, p + 1))}
+                              >
+                                Next ›
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-      </div>
+      </main>
 
-      {/* Image Cropper Modal */}
-      <AnimatePresence>
-        {cropperModal.isOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="cropper-backdrop">
-            <div className="cropper-dialog">
-              <div className="cropper-header">
-                <h3>ADJUST & CROP IMAGE</h3>
-                <button onClick={() => setCropperModal(prev => ({ ...prev, isOpen: false }))}>
-                  <X size={18} />
-                </button>
+      {/* Image Crop Adjustment Modal */}
+      {adjustmentModal.isOpen && (
+        <div className="admin-modal-backdrop" onMouseUp={handleMouseUp} onTouchEnd={handleMouseUp}>
+          <div className="admin-modal-card" style={{ maxWidth: '560px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div>
+                <div className="config-section-title" style={{ margin: 0 }}>ADJUST IMAGE POSITION</div>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.78rem', color: 'var(--apple-text-secondary)' }}>
+                  Click and drag to pan image or use the slider below to zoom.
+                </p>
               </div>
+              <button className="btn-ghost" style={{ padding: '0.4rem' }} onClick={() => setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16 / 9 })}>
+                <X size={16} />
+              </button>
+            </div>
 
-              <div
-                className="cropper-viewport"
-                style={{ aspectRatio: cropperModal.aspectRatio }}
-                onMouseDown={(e) => {
-                  setIsDragging(true);
-                  setDragStart({ x: e.clientX - cropperModal.pan.x, y: e.clientY - cropperModal.pan.y });
+            <div 
+              ref={previewContainerRef}
+              style={{ 
+                width: '100%', 
+                height: '280px', 
+                background: '#0a0a0c', 
+                borderRadius: '12px', 
+                border: '2px dashed var(--apple-blue)', 
+                overflow: 'hidden', 
+                position: 'relative',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                marginBottom: '1.25rem',
+                cursor: isDragging ? 'grabbing' : 'grab',
+                userSelect: 'none'
+              }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleMouseUp}
+            >
+              <img
+                src={adjustmentModal.src}
+                alt="Preview"
+                draggable={false}
+                style={{
+                  maxWidth: 'none',
+                  maxHeight: 'none',
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  transform: `scale(${zoom}) translate(${dragPos.x / zoom}px, ${dragPos.y / zoom}px)`,
+                  transition: isDragging ? 'none' : 'transform 0.05s ease-out',
+                  pointerEvents: 'none'
                 }}
-                onMouseMove={(e) => {
-                  if (!isDragging) return;
-                  setCropperModal(prev => ({ ...prev, pan: { x: e.clientX - dragStart.x, y: e.clientY - dragStart.y } }));
-                }}
-                onMouseUp={() => setIsDragging(false)}
-                onMouseLeave={() => setIsDragging(false)}
-              >
-                <img
-                  src={cropperModal.imageSrc}
-                  alt="Crop Preview"
-                  style={{
-                    transform: `translate(${cropperModal.pan.x}px, ${cropperModal.pan.y}px) scale(${cropperModal.zoom})`,
-                    cursor: isDragging ? 'grabbing' : 'grab'
-                  }}
-                  draggable={false}
-                />
-              </div>
-
-              <div className="cropper-controls">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--apple-text-secondary)' }}>Zoom:</span>
-                  <input
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="0.05"
-                    value={cropperModal.zoom}
-                    onChange={(e) => setCropperModal(prev => ({ ...prev, zoom: Number(e.target.value) }))}
-                    style={{ flex: 1 }}
-                  />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{Math.round(cropperModal.zoom * 100)}%</span>
-                </div>
-              </div>
-
-              <div className="cropper-actions">
-                <button className="btn-secondary" onClick={() => setCropperModal(prev => ({ ...prev, isOpen: false }))}>
-                  Cancel
-                </button>
-                <button className="btn-primary" onClick={handleCropSave}>
-                  Apply & Save Image
-                </button>
+              />
+              <div style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'rgba(0,0,0,0.65)', color: '#ffffff', padding: '3px 8px', borderRadius: '6px', fontSize: '0.7rem', pointerEvents: 'none' }}>
+                16:9 Standard Aspect Ratio
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Zoom Scale</label>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--apple-blue)', fontWeight: 700 }}>{zoom.toFixed(1)}x</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0.5" 
+                  max="3.0" 
+                  step="0.05" 
+                  value={zoom} 
+                  onChange={(e) => setZoom(Number(e.target.value))} 
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <button 
+                type="button" 
+                className="btn-ghost" 
+                style={{ padding: '0.5rem 0.85rem', fontSize: '0.78rem', marginTop: '1rem' }}
+                onClick={() => { setDragPos({ x: 0, y: 0 }); setZoom(1); }}
+              >
+                Reset
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button className="btn-ghost" onClick={() => setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16 / 9 })}>Cancel</button>
+              <button className="save-btn" onClick={confirmCrop}>Apply & Save Image</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Project Modal */}
+      {projectModal.isOpen && (
+        <div className="admin-modal-backdrop">
+          <div className="admin-modal-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div className="config-section-title" style={{ margin: 0 }}>{projectModal.mode === 'add' ? 'NEW PROJECT' : 'EDIT PROJECT'}</div>
+              <button className="btn-ghost" style={{ padding: '0.4rem' }} onClick={() => setProjectModal({ isOpen: false, mode: 'add', data: {} })}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="form-group">
+              <label>Project Name</label>
+              <input type="text" className="admin-input" value={projectModal.data.title || ''} onChange={e => setProjectModal(p => ({ ...p, data: { ...p.data, title: e.target.value } }))} />
+            </div>
+
+            <div className="form-group">
+              <label>Category</label>
+              <input type="text" className="admin-input" value={projectModal.data.category || ''} onChange={e => setProjectModal(p => ({ ...p, data: { ...p.data, category: e.target.value } }))} placeholder="Web App, AI Tool..." />
+            </div>
+
+            <div className="form-group">
+              <label>Tech Stack Tags (Comma separated)</label>
+              <input type="text" className="admin-input" value={Array.isArray(projectModal.data.tags) ? projectModal.data.tags.join(', ') : (projectModal.data.tags || '')} onChange={e => setProjectModal(p => ({ ...p, data: { ...p.data, tags: e.target.value } }))} placeholder="React, Vite, Firebase..." />
+            </div>
+
+            <div className="form-group">
+              <label>Project Description</label>
+              <textarea className="admin-textarea" value={projectModal.data.description || ''} onChange={e => setProjectModal(p => ({ ...p, data: { ...p.data, description: e.target.value } }))} />
+            </div>
+
+            <div className="form-group">
+              <label>Live Demo / Application URL</label>
+              <input type="url" className="admin-input" placeholder="https://bctoiws0902.github.io/..." value={projectModal.data.demoUrl || ''} onChange={e => setProjectModal(p => ({ ...p, data: { ...p.data, demoUrl: e.target.value } }))} />
+            </div>
+
+            <div className="form-group">
+              <label>GitHub Repository URL</label>
+              <input type="url" className="admin-input" placeholder="https://github.com/..." value={projectModal.data.githubUrl || ''} onChange={e => setProjectModal(p => ({ ...p, data: { ...p.data, githubUrl: e.target.value } }))} />
+            </div>
+
+            <div className="form-group">
+              <label>Project Cover Thumbnail</label>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                {(projectModal.data.image || projectModal.data.thumbnail) && (
+                  <img src={projectModal.data.image || projectModal.data.thumbnail} alt="Preview" style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover' }} />
+                )}
+                <label className="btn-ghost" style={{ cursor: 'pointer' }}>
+                  <Upload size={14} /> Upload Cover Image
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileUpload(e, res => setProjectModal(p => ({ ...p, data: { ...p.data, image: res, thumbnail: res } })), 16 / 9)} />
+                </label>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button className="btn-ghost" onClick={() => setProjectModal({ isOpen: false, mode: 'add', data: {} })}>Cancel</button>
+              <button className="save-btn" onClick={handleSaveProject}>Save Project</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Modal */}
+      {userModal.isOpen && (
+        <div className="admin-modal-backdrop">
+          <div className="admin-modal-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div className="config-section-title" style={{ margin: 0 }}>{userModal.mode === 'add' ? 'ADD NEW USER' : 'EDIT USER ACCOUNT'}</div>
+              <button className="btn-ghost" style={{ padding: '0.4rem' }} onClick={() => setUserModal({ isOpen: false, mode: 'add', data: {} })}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="form-group">
+              <label>Display Name</label>
+              <input type="text" className="admin-input" value={userModal.data.displayName || ''} onChange={e => setUserModal(p => ({ ...p, data: { ...p.data, displayName: e.target.value } }))} />
+            </div>
+
+            <div className="form-group">
+              <label>Username</label>
+              <input type="text" className="admin-input" value={userModal.data.username || ''} onChange={e => setUserModal(p => ({ ...p, data: { ...p.data, username: e.target.value } }))} />
+            </div>
+
+            <div className="form-group">
+              <label>Email</label>
+              <input type="email" className="admin-input" value={userModal.data.email || ''} onChange={e => setUserModal(p => ({ ...p, data: { ...p.data, email: e.target.value } }))} />
+            </div>
+
+            <div className="form-group">
+              <label>Role Assignment</label>
+              <select className="admin-select" value={userModal.data.role || 'user'} onChange={e => setUserModal(p => ({ ...p, data: { ...p.data, role: e.target.value } }))}>
+                <option value="user">Standard User (user)</option>
+                <option value="admin">Administrator (admin)</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button className="btn-ghost" onClick={() => setUserModal({ isOpen: false, mode: 'add', data: {} })}>Cancel</button>
+              <button className="save-btn" onClick={handleSaveUser}>Save User</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Status Toast */}
+      <div className={`admin-floating-status ${status ? 'show' : ''}`}>
+        <span>{status}</span>
+      </div>
     </div>
   );
 };

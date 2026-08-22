@@ -14,8 +14,18 @@ import {
   Trash2
 } from 'lucide-react';
 
-const SocialIcon = ({ name, size = 20, color = 'currentColor' }) => {
-  const brandName = name?.toLowerCase() || '';
+const SocialIcon = ({ name, icon, iconUrl, size = 20, color = 'currentColor' }) => {
+  if (iconUrl) {
+    return (
+      <img 
+        src={iconUrl} 
+        alt={name || icon || "Social Icon"} 
+        style={{ width: size, height: size, objectFit: 'contain' }} 
+      />
+    );
+  }
+
+  const brandName = (name || icon || '')?.toString().toLowerCase().trim();
 
   // 1. Zalo
   if (brandName.includes('zalo')) {
@@ -26,6 +36,7 @@ const SocialIcon = ({ name, size = 20, color = 'currentColor' }) => {
     );
   }
 
+  // 2. Facebook
   if (brandName.includes('facebook')) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -34,6 +45,7 @@ const SocialIcon = ({ name, size = 20, color = 'currentColor' }) => {
     );
   }
 
+  // 3. YouTube
   if (brandName.includes('youtube')) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -43,6 +55,7 @@ const SocialIcon = ({ name, size = 20, color = 'currentColor' }) => {
     );
   }
 
+  // 4. TikTok
   if (brandName.includes('tiktok')) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -51,6 +64,7 @@ const SocialIcon = ({ name, size = 20, color = 'currentColor' }) => {
     );
   }
 
+  // 5. Instagram
   if (brandName.includes('instagram')) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -61,6 +75,7 @@ const SocialIcon = ({ name, size = 20, color = 'currentColor' }) => {
     );
   }
 
+  // 6. Telegram
   if (brandName.includes('telegram')) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -70,6 +85,7 @@ const SocialIcon = ({ name, size = 20, color = 'currentColor' }) => {
     );
   }
 
+  // 7. LinkedIn
   if (brandName.includes('linkedin')) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -80,6 +96,7 @@ const SocialIcon = ({ name, size = 20, color = 'currentColor' }) => {
     );
   }
 
+  // 8. GitHub
   if (brandName.includes('github')) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -88,6 +105,7 @@ const SocialIcon = ({ name, size = 20, color = 'currentColor' }) => {
     );
   }
 
+  // 9. Twitter / X
   if (brandName.includes('x') || brandName.includes('twitter')) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -97,6 +115,7 @@ const SocialIcon = ({ name, size = 20, color = 'currentColor' }) => {
     );
   }
 
+  // 10. Discord
   if (brandName.includes('discord')) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -109,6 +128,7 @@ const SocialIcon = ({ name, size = 20, color = 'currentColor' }) => {
     );
   }
 
+  // 11. Reddit
   if (brandName.includes('reddit')) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -118,94 +138,7 @@ const SocialIcon = ({ name, size = 20, color = 'currentColor' }) => {
     );
   }
 
-  if (brandName.includes('threads')) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 12c0-3 2.5-5.5 5.5-5.5S23 9 23 12s-2 5.5-5.5 5.5S12 15 12 12z" />
-        <path d="M14 12c0-1.1.9-2 2-2s2 .9 2 2-0.9 2-2 2-2-.9-2-2z" />
-        <path d="M12 12c0 3-2.5 5.5-5.5 5.5S1 15 1 12s2-5.5 5.5-5.5S12 9 12 12z" />
-      </svg>
-    );
-  }
-
-  if (brandName.includes('twitch')) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 2H3v16h5v4l4-4h5l4-4V2z"></path>
-        <line x1="11" y1="7" x2="11" y2="11"></line>
-        <line x1="16" y1="7" x2="16" y2="11"></line>
-      </svg>
-    );
-  }
-
-  if (brandName.includes('spotify')) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <path d="M8 12c2-1 4-1 8 0"></path>
-        <path d="M7 15c3-1 6-1 10 0"></path>
-        <path d="M9 9c2-1 3-1 6 0"></path>
-      </svg>
-    );
-  }
-
-  if (brandName.includes('apple')) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 20.94c1.88 0 3.05-1.35 4.34-1.35 1.25 0 2.11.83 3.49.83 2 0 3.17-2.45 3.17-2.45s-2.09-1.2-2.09-3.41c0-2.34 2.17-3.45 2.17-3.45s-1.87-2.55-4.43-2.55c-1.2 0-2.28.69-3.41.69-1.12 0-2.26-.74-3.5-.74C8.92 8.51 6 10.87 6 15.08c0 4.14 3 8.35 5.5 8.35.53 0 1.34-.14 2-.45"/>
-        <path d="M15.07 4c-.11 2.37-2.08 4.29-4.32 4.29M12 4c.26-2.14 2-3.8 4.13-3.8"/>
-      </svg>
-    );
-  }
-
-  if (brandName.includes('snapchat')) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2c-.6 0-1.1.2-1.5.5C8.4 4.1 6.8 6.5 6.1 9.1c-.2.7-.3 1.4-.2 2.1l-.8 1.1c-.4.5-.4 1.2-.1 1.7.3.5 1 .7 1.6.5l.8-.2c.4 1.3 1.4 2.4 2.7 3.1-.4.5-.7 1.1-.7 1.8 0 1.2 1 2.2 2.2 2.2s2.2-1 2.2-2.2c0-.7-.3-1.3-.7-1.8 1.3-.7 2.3-1.8 2.7-3.1l.8.2c.6.2 1.3 0 1.6-.5.3-.5.3-1.2-.1-1.7l-.8-1.1c.1-.7.1-1.4-.2-2.1-.7-2.6-2.3-5-4.4-6.6-.4-.3-.9-.5-1.5-.5z"/>
-      </svg>
-    );
-  }
-
-  if (brandName.includes('pinterest')) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <path d="M11.5 17c.5 1 1 2.5 1 4"></path>
-        <path d="M12 8c-3 0-5 2-5 5.5s3.5 4.5 5 2c1.5-2.5 3-5 3-7.5S13.5 8 12 8z"></path>
-      </svg>
-    );
-  }
-
-  if (brandName.includes('patreon')) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="14.5" cy="9.5" r="5.5"></circle>
-        <rect x="5" y="4" width="3" height="16"></rect>
-      </svg>
-    );
-  }
-
-  if (brandName.includes('medium')) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <ellipse cx="6" cy="12" rx="4" ry="7"></ellipse>
-        <ellipse cx="15" cy="12" rx="2" ry="6"></ellipse>
-        <rect x="20" y="7" width="1" height="10"></rect>
-      </svg>
-    );
-  }
-
-  if (brandName.includes('slack')) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="13" y="2" width="3" height="8" rx="1.5"></rect>
-        <rect x="19" y="9" width="3" height="8" rx="1.5"></rect>
-        <rect x="8" y="14" width="3" height="8" rx="1.5"></rect>
-        <rect x="2" y="7" width="3" height="8" rx="1.5"></rect>
-      </svg>
-    );
-  }
-
+  // 12. Messenger
   if (brandName.includes('messenger')) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -215,6 +148,7 @@ const SocialIcon = ({ name, size = 20, color = 'currentColor' }) => {
     );
   }
 
+  // 13. Steam
   if (brandName.includes('steam')) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -224,6 +158,7 @@ const SocialIcon = ({ name, size = 20, color = 'currentColor' }) => {
     );
   }
 
+  // Common fallbacks
   if (brandName.includes('send')) return <Send size={size} color={color} />;
   if (brandName.includes('ghost')) return <Ghost size={size} color={color} />;
   if (brandName.includes('pin')) return <Pin size={size} color={color} />;
