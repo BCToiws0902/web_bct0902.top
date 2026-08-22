@@ -122,6 +122,23 @@ async function syncAll() {
   await db.collection('projects').doc('bctweaks-repo').set(project2Data, { merge: true });
   console.log('✅ Synchronized project BCTweaksRepo with repo & github URLs');
 
+  // 5. Project PTZ Controller Portable
+  const project3Data = {
+    id: 'ptz-controller-portable',
+    title: 'PTZ Controller Portable',
+    category: 'Camera Tool / Hardware Utility',
+    tags: ['PTZ Camera', 'VISCA Serial', '.NET WinForms', 'Always-On-Top', 'Portable App'],
+    description: 'Ứng dụng Windows portable điều khiển camera PTZ qua giao thức VISCA Serial (USB COM port), hỗ trợ bàn phím điều hướng 8 hướng, thu phóng quang học và cửa sổ điều khiển nổi mini Always-On-Top tiện lợi.',
+    demoUrl: 'https://github.com/BCToiws0902/PTZ-Controller-Portable',
+    githubUrl: 'https://github.com/BCToiws0902/PTZ-Controller-Portable',
+    thumbnail: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=800',
+    order: 3,
+    createdAt: new Date().toISOString()
+  };
+
+  await db.collection('projects').doc('ptz-controller-portable').set(project3Data, { merge: true });
+  console.log('✅ Synchronized project PTZ Controller Portable with repo & github URLs');
+
   console.log('🎉 All Firestore data successfully synchronized!');
 }
 
