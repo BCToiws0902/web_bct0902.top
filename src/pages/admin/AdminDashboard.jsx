@@ -419,15 +419,17 @@ const AdminDashboard = () => {
 
       {/* Sidebar Navigation */}
       <aside className={`admin-sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
-        <div className="admin-sidebar-header">
-          <img src={localConfig.appearance?.logoUrl || '/logobct.png'} alt="Logo" className="admin-brand-logo" />
+        <div className="admin-brand">
+          <div className="brand-icon-wrapper">
+            <img src={localConfig.appearance?.logoUrl || '/logobct.png'} alt="Logo" />
+          </div>
           <div className="admin-brand-info">
-            <h2>BCT STUDIO</h2>
-            <span>WORKSPACE ADMIN</span>
+            <span className="admin-brand-title">BCT STUDIO</span>
+            <span className="admin-brand-subtitle">WORKSPACE ADMIN</span>
           </div>
         </div>
 
-        <nav className="admin-nav-menu">
+        <nav className="admin-nav">
           <button
             className={`admin-nav-item ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => { setActiveTab('overview'); setIsMobileMenuOpen(false); }}
@@ -495,14 +497,14 @@ const AdminDashboard = () => {
       </aside>
 
       {/* Main Body */}
-      <main className="admin-main">
+      <div className="admin-content">
         {/* Top Sticky Bar */}
-        <header className="admin-topbar">
+        <header className="admin-header">
           <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
             <Menu size={20} />
           </button>
 
-          <div className="topbar-title">
+          <div className="admin-header-titles">
             <h1>
               {activeTab === 'overview' && 'SYSTEM OVERVIEW'}
               {activeTab === 'settings' && 'SYSTEM & SECURITY'}
@@ -516,16 +518,15 @@ const AdminDashboard = () => {
             <p>BCT Studio Administration Space</p>
           </div>
 
-          <div className="topbar-actions">
-            <Link to="/" target="_blank" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none' }}>
+          <div className="admin-header-actions">
+            <Link to="/" target="_blank" className="btn-ghost">
               <ExternalLink size={16} />
               <span>Live Site</span>
             </Link>
             <button
-              className="btn-primary"
+              className="save-btn"
               onClick={handleSave}
               disabled={isSaving}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
             >
               <Save size={16} />
               <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
@@ -534,7 +535,7 @@ const AdminDashboard = () => {
         </header>
 
         {/* Tab Content Container */}
-        <div className="admin-content-body">
+        <div className="admin-frame">
           <AnimatePresence mode="wait">
             {/* TAB 0: OVERVIEW */}
             {activeTab === 'overview' && (
@@ -1414,7 +1415,7 @@ const AdminDashboard = () => {
             )}
           </AnimatePresence>
         </div>
-      </main>
+      </div>
 
       {/* Image Cropper Modal */}
       <AnimatePresence>

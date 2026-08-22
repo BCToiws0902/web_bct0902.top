@@ -579,20 +579,20 @@
 /* --------------------------------------------------------------------------
    Apple Tables (Blog, Projects, Users)
    -------------------------------------------------------------------------- */
-.users-table-container {
+.users-table-container, .admin-table-container {
   overflow-x: auto;
   border-radius: 12px;
   border: 1px solid var(--apple-border);
 }
 
-.users-table {
+.users-table, .admin-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
   background: #ffffff;
 }
 
-.users-table th {
+.users-table th, .admin-table th {
   background: var(--apple-card-subtle);
   color: var(--apple-text-secondary);
   font-size: 0.75rem;
@@ -603,7 +603,7 @@
   border-bottom: 1px solid var(--apple-border);
 }
 
-.users-table td {
+.users-table td, .admin-table td {
   padding: 0.85rem 1.25rem;
   border-bottom: 1px solid var(--apple-border);
   font-size: 0.88rem;
@@ -611,11 +611,11 @@
   vertical-align: middle;
 }
 
-.users-table tr:last-child td {
+.users-table tr:last-child td, .admin-table tr:last-child td {
   border-bottom: none;
 }
 
-.users-table tr:hover td {
+.users-table tr:hover td, .admin-table tr:hover td {
   background: rgba(0, 0, 0, 0.015);
 }
 
