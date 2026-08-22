@@ -617,7 +617,7 @@ const AdminDashboard = () => {
           <div className="admin-header-actions">
             <a href="/" target="_blank" rel="noopener noreferrer" className="btn-ghost">
               <ExternalLink size={15} />
-              <span>Xem Web</span>
+              <span>Live Site</span>
             </a>
             <button className="save-btn" onClick={handleSave} disabled={isSaving}>
               <Save size={15} />
@@ -1242,9 +1242,10 @@ const AdminDashboard = () => {
                     <table className="users-table">
                       <thead>
                         <tr>
-                          <th style={{ width: '70px', textAlign: 'center' }}>STT</th>
+                          <th style={{ width: '60px', textAlign: 'center' }}>NO.</th>
                           <th>PROJECT</th>
                           <th>TECH STACK</th>
+                          <th style={{ width: '130px', textAlign: 'center' }}>VIEWS</th>
                           <th style={{ textAlign: 'right' }}>ACTIONS</th>
                         </tr>
                       </thead>
@@ -1273,6 +1274,17 @@ const AdminDashboard = () => {
                                 {(Array.isArray(proj.tags) ? proj.tags : []).map((t, i) => (
                                   <span key={i} className="path-chip">{t}</span>
                                 ))}
+                              </div>
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 700, color: 'var(--apple-blue)' }}>
+                                  <Eye size={13} />
+                                  {(Number(proj.customViews || 0) + Number(proj.views || 0)).toLocaleString()}
+                                </span>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--apple-text-secondary)' }}>
+                                  Real: {(proj.views || 0).toLocaleString()}
+                                </span>
                               </div>
                             </td>
                             <td>

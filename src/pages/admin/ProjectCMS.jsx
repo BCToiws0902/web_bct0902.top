@@ -82,6 +82,7 @@ const ProjectCMS = () => {
   const [version, setVersion] = useState('v1.0.0');
   const [fileSize, setFileSize] = useState('~50 MB');
   const [views, setViews] = useState(0);
+  const [customViews, setCustomViews] = useState(0);
 
   // Publishing
   const [order, setOrder] = useState(1);
@@ -115,6 +116,7 @@ const ProjectCMS = () => {
         setVersion(data.version || 'v1.0.0');
         setFileSize(data.fileSize || '');
         setViews(Number(data.views) || 0);
+        setCustomViews(Number(data.customViews) || 0);
         setOrder(Number(data.order) || 1);
         setFeatured(Boolean(data.featured));
         setPublished(data.published !== false);
@@ -251,6 +253,7 @@ const ProjectCMS = () => {
         version: version.trim(),
         fileSize: fileSize.trim(),
         views: Number(views) || 0,
+        customViews: Number(customViews) || 0,
         order: Number(order) || 1,
         featured: Boolean(featured),
         published: Boolean(publishState),
@@ -536,6 +539,18 @@ const ProjectCMS = () => {
                   onChange={(e) => setOrder(Number(e.target.value))} 
                 />
               </div>
+            </div>
+            <div className="form-item" style={{ marginTop: '0.75rem' }}>
+              <label>Base / Display Views Offset (Custom Public Views)</label>
+              <input 
+                type="number" 
+                placeholder="e.g. 1250" 
+                value={customViews} 
+                onChange={(e) => setCustomViews(Number(e.target.value))} 
+              />
+              <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem', display: 'block' }}>
+                Real views: <strong>{views}</strong>. Total views shown to visitors will be <strong>{(Number(customViews) + Number(views)).toLocaleString()}</strong>.
+              </span>
             </div>
             <div className="form-checkbox-row">
               <label>

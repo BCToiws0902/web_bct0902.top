@@ -25,7 +25,7 @@ const Skills = () => {
   ];
 
   return (
-    <section id="skills" className="container" style={{ padding: '4rem 2rem 1rem' }}>
+    <section id="skills" className="container" style={{ padding: '4rem 2rem 3rem' }}>
       <motion.h2 
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}

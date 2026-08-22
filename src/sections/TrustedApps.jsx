@@ -12,7 +12,7 @@ const TrustedApps = () => {
   const marqueeApps = [...displayApps, ...displayApps];
 
   return (
-    <section id="trusted-apps" style={{ padding: '1rem 0', overflow: 'hidden', position: 'relative' }}>
+    <section id="trusted-apps" style={{ padding: '3.5rem 0', overflow: 'hidden', position: 'relative' }}>
       <div className="container" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <motion.h2 
           initial={{ opacity: 0, y: 20 }}

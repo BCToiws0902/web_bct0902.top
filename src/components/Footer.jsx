@@ -140,8 +140,7 @@ const Footer = ({ technicalFont }) => {
   return (
     <footer id="contact" className={technicalFont ? 'chakra-font' : ''} style={{ 
       borderTop: '1px solid var(--bg-glass-border)',
-      padding: '2rem 2rem 1.5rem',
-      marginTop: '1rem',
+      padding: '3rem 2rem 1.5rem',
       background: 'rgba(var(--bg-rgb), 0.3)'
     }}>
       <div className="container" style={{ 

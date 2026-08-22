@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +28,6 @@ const ProjectDetail = () => {
   const { t } = useTranslation();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [connecting, setConnecting] = useState(false);
   const [activeImageIdx, setActiveImageIdx] = useState(null);
 
   useEffect(() => {
@@ -44,9 +43,9 @@ const ProjectDetail = () => {
           const sessionKey = `bct_viewed_proj_${id}`;
           if (!sessionStorage.getItem(sessionKey)) {
             sessionStorage.setItem(sessionKey, '1');
-            updateDoc(docRef, {
+            await updateDoc(docRef, {
               views: increment(1)
-            }).catch(console.error);
+            });
           }
         } else {
           navigate('/showcase');
@@ -61,24 +60,10 @@ const ProjectDetail = () => {
     fetchProject();
   }, [id, navigate]);
 
-  const handleMainAction = async () => {
-    const targetUrl = project?.demoUrl || project?.downloadUrl || project?.githubUrl;
-    if (!targetUrl || connecting) return;
-    
-    setConnecting(true);
-    try {
-      window.open(targetUrl, '_blank', 'noopener,noreferrer');
-    } finally {
-      setTimeout(() => setConnecting(false), 1000);
-    }
-  };
-
   if (loading) return <LoadingScreen />;
   if (!project) return null;
 
   const galleryList = Array.isArray(project.galleryImages) ? project.galleryImages : [];
-  const defaultActionText = project.demoUrl ? t('project.access_web', 'OPEN WEB APP') : project.downloadUrl ? t('project.download_exe', 'DOWNLOAD .EXE') : t('project.view_github', 'GITHUB REPOSITORY');
-  const actionText = project.actionButtonLabel || defaultActionText;
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingBottom: '100px' }}>
@@ -137,7 +122,7 @@ const ProjectDetail = () => {
                 </span>
               )}
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#10b981', fontWeight: 600 }}>
-                <Eye size={14} /> {project.views || project.downloadCount || 1} {t('project.views', 'views')}
+                <Eye size={14} /> {(Number(project.customViews || 0) + Number(project.views || 0)).toLocaleString()} {t('project.views', 'views')}
               </span>
             </div>
 
@@ -234,50 +219,75 @@ const ProjectDetail = () => {
                 </p>
               </div>
 
-              {/* Main Action Button */}
-              {(project.demoUrl || project.downloadUrl || project.githubUrl) && (
-                <button 
-                  onClick={handleMainAction}
-                  disabled={connecting}
-                  style={{ 
-                    width: '100%', padding: '1.1rem', borderRadius: '12px',
-                    background: connecting ? 'rgba(255,255,255,0.1)' : 'var(--accent-main)',
-                    color: connecting ? 'var(--text-muted)' : '#000',
-                    border: 'none', fontWeight: 800, fontSize: '0.95rem',
-                    cursor: connecting ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem',
-                    boxShadow: connecting ? 'none' : '0 10px 30px rgba(var(--accent-rgb), 0.3)',
-                    transition: 'all 0.3s ease'
-                  }}
-                >
-                  {connecting ? t('project.connecting', 'CONNECTING...') : (
-                    <>
-                      {project.demoUrl ? <ExternalLink size={18} /> : project.downloadUrl ? <Download size={18} /> : <GitBranch size={18} />}
-                      {actionText}
-                    </>
-                  )}
-                </button>
-              )}
+              {/* Action Buttons: 3 Distinct Separate Actions */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {/* 1. Live Demo / Web App */}
+                {project.demoUrl && (
+                  <a 
+                    href={project.demoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ 
+                      width: '100%', padding: '1rem 1.25rem', borderRadius: '12px',
+                      background: 'var(--accent-main)',
+                      color: '#000',
+                      border: 'none', fontWeight: 800, fontSize: '0.92rem',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.7rem',
+                      boxShadow: '0 8px 24px rgba(var(--accent-rgb), 0.3)',
+                      textDecoration: 'none',
+                      transition: 'all 0.25s ease'
+                    }}
+                  >
+                    <ExternalLink size={18} />
+                    <span>{t('project.live_demo', 'OPEN LIVE DEMO')}</span>
+                  </a>
+                )}
 
-              {/* Secondary Action: GitHub */}
-              {project.githubUrl && project.demoUrl && (
-                <a
-                  href={project.githubUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    width: '100%', padding: '0.85rem', borderRadius: '12px',
-                    background: 'rgba(255,255,255,0.05)',
-                    color: 'var(--text-primary)',
-                    border: '1px solid rgba(255,255,255,0.1)', fontWeight: 600, fontSize: '0.88rem',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
-                    textDecoration: 'none', marginTop: '0.75rem',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <GitBranch size={16} /> {t('project.view_github', 'GITHUB REPOSITORY')}
-                </a>
-              )}
+                {/* 2. Direct Download Link */}
+                {project.downloadUrl && (
+                  <a 
+                    href={project.downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    style={{ 
+                      width: '100%', padding: '1rem 1.25rem', borderRadius: '12px',
+                      background: project.demoUrl ? '#10b981' : 'var(--accent-main)',
+                      color: project.demoUrl ? '#ffffff' : '#000000',
+                      border: 'none', fontWeight: 800, fontSize: '0.92rem',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.7rem',
+                      boxShadow: project.demoUrl ? '0 8px 24px rgba(16, 185, 129, 0.25)' : '0 8px 24px rgba(var(--accent-rgb), 0.3)',
+                      textDecoration: 'none',
+                      transition: 'all 0.25s ease'
+                    }}
+                  >
+                    <Download size={18} />
+                    <span>{project.actionButtonLabel || t('project.download_action', 'DOWNLOAD APPLICATION')}</span>
+                  </a>
+                )}
+
+                {/* 3. GitHub Repository */}
+                {project.githubUrl && (
+                  <a
+                    href={project.githubUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      width: '100%', padding: '0.85rem 1.25rem', borderRadius: '12px',
+                      background: 'rgba(255,255,255,0.05)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid rgba(255,255,255,0.12)', 
+                      fontWeight: 600, fontSize: '0.88rem',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+                      textDecoration: 'none',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <GitBranch size={16} /> 
+                    <span>{t('project.view_github', 'GITHUB REPOSITORY')}</span>
+                  </a>
+                )}
+              </div>
             </div>
           </motion.aside>
         </div>

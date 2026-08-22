@@ -260,6 +260,8 @@
     "verified": "VERIFIED & SECURE",
     "verified_desc": "Tested and verified directly by BCT Studio.",
     "access_web": "OPEN WEB APP",
+    "live_demo": "OPEN LIVE DEMO",
+    "download_action": "DOWNLOAD APPLICATION",
     "download_exe": "DOWNLOAD .EXE",
     "view_github": "GITHUB REPOSITORY",
     "gallery_title": "PRODUCT GALLERY",

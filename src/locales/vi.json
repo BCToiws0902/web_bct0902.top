@@ -269,6 +269,8 @@
     "verified": "AN TOÀN & XÁC THỰC",
     "verified_desc": "Đã được kiểm thử và lưu trữ trực tiếp bởi BCT Studio.",
     "access_web": "TRUY CẬP ỨNG DỤNG",
+    "live_demo": "TRUY CẬP WEB APP",
+    "download_action": "TẢI PHẦN MỀM (.EXE / .ZIP)",
     "download_exe": "TẢI BẢN .EXE",
     "view_github": "MÃ NGUỒN GITHUB",
     "gallery_title": "BỘ SƯU TẬP ẢNH THỰC TẾ",

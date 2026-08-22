@@ -15,8 +15,8 @@ const FilmStrip = () => {
   const duplicatedImages = [...images, ...images, ...images];
 
   return (
-    <section className="film-strip-container" style={{ padding: '8rem 0' }}>
-      <div style={{ textAlign: 'center', marginBottom: '5rem' }}>
+    <section className="film-strip-container" style={{ padding: '4rem 0' }}>
+      <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
         <motion.h2 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

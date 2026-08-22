@@ -39,9 +39,9 @@ const Testimonials = () => {
   };
 
   return (
-    <section id="testimonials" style={{ padding: '8rem 2rem', background: 'transparent', position: 'relative', overflow: 'hidden' }}>
+    <section id="testimonials" style={{ padding: '4rem 2rem', background: 'transparent', position: 'relative', overflow: 'hidden' }}>
       <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <header style={{ textAlign: 'center', marginBottom: '5rem' }}>
+        <header style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -56,7 +56,7 @@ const Testimonials = () => {
           </motion.div>
         </header>
 
-        <div style={{ minHeight: '400px', position: 'relative' }}>
+        <div style={{ minHeight: '320px', position: 'relative' }}>
           <AnimatePresence mode="wait">
             <motion.div
               key={currentIndex}

@@ -25,6 +25,16 @@
   --apple-card-radius: 18px;
   --apple-shadow: 0 2px 14px rgba(0, 0, 0, 0.04), 0 0 1px rgba(0, 0, 0, 0.08);
   --apple-shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --apple-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.admin-layout,
+.admin-layout input,
+.admin-layout select,
+.admin-layout textarea,
+.admin-layout button,
+.admin-layout table {
+  font-family: var(--apple-font) !important;
 }
 
 .admin-layout {
@@ -32,7 +42,6 @@
   min-height: 100vh;
   background: var(--apple-bg);
   color: var(--apple-text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
