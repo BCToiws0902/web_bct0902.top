@@ -9,8 +9,7 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null);
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('bct_admin_session') === 'true');
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -44,7 +43,6 @@ export const AuthProvider = ({ children }) => {
                     setIsAdmin(false);
                 }
             }
-            setLoading(false);
         });
 
         if (localStorage.getItem('bct_admin_session') === 'true') {
@@ -74,7 +72,7 @@ export const AuthProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider value={value}>
-            {!loading && children}
+            {children}
         </AuthContext.Provider>
     );
 };

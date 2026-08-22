@@ -572,10 +572,10 @@ const AdminDashboard = () => {
       <aside className={`admin-sidebar ${mobileMenuOpen ? 'open' : ''}`}>
         <div className="admin-brand">
           <div className="brand-icon-wrapper">
-            <img src={localConfig.general?.logoUrl || '/logobct.png'} alt="Logo" />
+            <img src={localConfig?.general?.logoUrl || localConfig?.appearance?.logoUrl || '/logobct.png'} alt="Logo" />
           </div>
           <div className="admin-brand-info">
-            <span className="admin-brand-title">{localConfig.general?.siteTitle || 'BCT0902 Studio'}</span>
+            <span className="admin-brand-title">{localConfig?.general?.siteTitle || localConfig?.appearance?.siteTitle || 'BCT0902 Studio'}</span>
             <span className="admin-brand-subtitle">System Administration</span>
           </div>
         </div>
