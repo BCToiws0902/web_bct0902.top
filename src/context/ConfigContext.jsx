@@ -77,34 +77,41 @@ export const ConfigProvider = ({ children }) => {
 
     useEffect(() => {
         const mainConfigDocRef = doc(db, 'site_config', 'main_config');
-        const legacyConfigDocRef = doc(db, 'system', 'config');
         const memoriesDocRef = doc(db, 'system', 'memories');
 
         updateDynamicStyles(DEFAULT_CONFIG.appearance);
 
         const loadConfig = async () => {
             try {
-                const [mainConfigSnap, legacyConfigSnap, memoriesSnap, memoriesColSnap] = await Promise.all([
+                const [mainConfigSnap, memoriesSnap, memoriesColSnap] = await Promise.all([
                     getDoc(mainConfigDocRef),
-                    getDoc(legacyConfigDocRef),
                     getDoc(memoriesDocRef), 
                     getDocs(query(collection(db, 'memories'), orderBy('order', 'asc')))
                 ]);
 
                 let mergedData = { ...DEFAULT_CONFIG };
 
-                if (legacyConfigSnap.exists()) mergedData = { ...mergedData, ...legacyConfigSnap.data() };
-                if (mainConfigSnap.exists()) mergedData = { ...mergedData, ...mainConfigSnap.data() };
-
-                // Fallbacks if arrays are empty in Firestore
-                if (!mergedData.social_links || mergedData.social_links.length === 0) {
-                    mergedData.social_links = DEFAULT_CONFIG.social_links;
-                }
-                if (!mergedData.apps || mergedData.apps.length === 0) {
-                    mergedData.apps = DEFAULT_CONFIG.apps;
-                }
-                if (!mergedData.content?.quotes || mergedData.content.quotes.length === 0) {
-                    mergedData.content = { ...(mergedData.content || {}), quotes: DEFAULT_CONFIG.content.quotes };
+                if (mainConfigSnap.exists()) {
+                    const data = mainConfigSnap.data();
+                    mergedData = {
+                        ...mergedData,
+                        ...data,
+                        social_links: Array.isArray(data.social_links) ? data.social_links : DEFAULT_CONFIG.social_links,
+                        apps: Array.isArray(data.apps) ? data.apps : DEFAULT_CONFIG.apps,
+                        content: {
+                            ...(mergedData.content || {}),
+                            ...(data.content || {}),
+                            quotes: Array.isArray(data.content?.quotes) ? data.content.quotes : DEFAULT_CONFIG.content.quotes
+                        },
+                        maintenance: {
+                            ...(mergedData.maintenance || {}),
+                            ...(data.maintenance || {})
+                        },
+                        appearance: {
+                            ...(mergedData.appearance || {}),
+                            ...(data.appearance || {})
+                        }
+                    };
                 }
 
                 if (!memoriesColSnap.empty) {
@@ -112,8 +119,6 @@ export const ConfigProvider = ({ children }) => {
                     mergedData.content = { ...(mergedData.content || {}), filmStripImages: colImages };
                 } else if (memoriesSnap.exists() && memoriesSnap.data()?.filmStripImages?.length > 0) {
                     mergedData.content = { ...(mergedData.content || {}), filmStripImages: memoriesSnap.data().filmStripImages };
-                } else {
-                    mergedData.content = { ...(mergedData.content || {}), filmStripImages: DEFAULT_CONFIG.content.filmStripImages };
                 }
 
                 setConfig(mergedData);
@@ -129,22 +134,25 @@ export const ConfigProvider = ({ children }) => {
             if (snap.exists()) {
                 const data = snap.data();
                 setConfig(prev => {
-                    const nextContent = {
-                        ...(prev.content || {}),
-                        ...(data.content || {}),
-                        filmStripImages: (data.content?.filmStripImages?.length > 0)
-                            ? data.content.filmStripImages
-                            : (prev.content?.filmStripImages?.length > 0 ? prev.content.filmStripImages : DEFAULT_CONFIG.content.filmStripImages),
-                        quotes: (data.content?.quotes?.length > 0)
-                            ? data.content.quotes
-                            : (prev.content?.quotes?.length > 0 ? prev.content.quotes : DEFAULT_CONFIG.content.quotes)
-                    };
                     return {
                         ...prev,
                         ...data,
-                        social_links: (data.social_links?.length > 0) ? data.social_links : (prev.social_links?.length > 0 ? prev.social_links : DEFAULT_CONFIG.social_links),
-                        apps: (data.apps?.length > 0) ? data.apps : (prev.apps?.length > 0 ? prev.apps : DEFAULT_CONFIG.apps),
-                        content: nextContent
+                        social_links: Array.isArray(data.social_links) ? data.social_links : prev.social_links,
+                        apps: Array.isArray(data.apps) ? data.apps : prev.apps,
+                        content: {
+                            ...(prev.content || {}),
+                            ...(data.content || {}),
+                            quotes: Array.isArray(data.content?.quotes) ? data.content.quotes : (prev.content?.quotes || []),
+                            filmStripImages: Array.isArray(data.content?.filmStripImages) ? data.content.filmStripImages : (prev.content?.filmStripImages || [])
+                        },
+                        maintenance: {
+                            ...(prev.maintenance || {}),
+                            ...(data.maintenance || {})
+                        },
+                        appearance: {
+                            ...(prev.appearance || {}),
+                            ...(data.appearance || {})
+                        }
                     };
                 });
                 updateDynamicStyles(data.appearance);
@@ -154,7 +162,7 @@ export const ConfigProvider = ({ children }) => {
         const unsubscribeMemories = onSnapshot(memoriesDocRef, (snap) => {
             if (snap.exists()) {
                 const memData = snap.data();
-                if (memData.filmStripImages && memData.filmStripImages.length > 0) {
+                if (memData.filmStripImages && Array.isArray(memData.filmStripImages)) {
                     setConfig(prev => ({
                         ...prev,
                         content: { ...(prev.content || {}), filmStripImages: memData.filmStripImages }

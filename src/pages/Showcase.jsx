@@ -6,7 +6,7 @@ import { db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { 
   ChevronRight,
-  Download
+  Eye
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import MobileBottomNav from '../components/MobileBottomNav';
@@ -61,7 +61,7 @@ const Showcase = () => {
               fontFamily: 'Chakra Petch',
               margin: 0
             }}>
-              {t('utilities.gallery_title', '< PHÒNG TRƯNG BÀY />')}
+              {t('showcase.title', '< SHOWCASE />')}
             </h1>
           </motion.div>
         </div>
@@ -69,10 +69,12 @@ const Showcase = () => {
 
       <section className="container" style={{ padding: '2rem' }}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '5rem', color: 'var(--text-secondary)' }}>ĐANG TẢI DỮ LIỆU DỰ ÁN...</div>
+          <div style={{ textAlign: 'center', padding: '5rem', color: 'var(--text-secondary)' }}>
+            {t('showcase.loading', 'LOADING SHOWCASE...')}
+          </div>
         ) : projects.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '5rem', color: 'var(--text-secondary)', fontSize: '1rem' }}>
-            Chưa có dự án nào được công bố.
+            {t('showcase.empty', 'No projects or utilities published yet.')}
           </div>
         ) : (
           <div style={{ 
@@ -106,30 +108,30 @@ const Showcase = () => {
                   boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
                 }}
               >
-                {}
+                {/* Thumbnail */}
                 <div style={{ 
                   width: '100%', aspectRatio: '16/9', borderRadius: '12px', 
                   overflow: 'hidden', background: 'rgba(255,255,255,0.03)',
                   border: '1px solid rgba(255,255,255,0.05)'
                 }}>
-                   <img src={project.thumbnail || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=600'} alt={project.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                   <img src={project.thumbnail || project.coverImage || project.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=600'} alt={project.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
 
-                {}
+                {/* Info */}
                 <div style={{ padding: '0.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <h3 style={{ fontSize: '1.4rem', fontFamily: 'Chakra Petch', margin: 0 }}>
                       {project.title}
                     </h3>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--accent-main)', opacity: 0.8 }}>v{project.version || '1.0.0'}</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--accent-main)', opacity: 0.8 }}>{project.version || 'v1.0.0'}</span>
                   </div>
                   
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6', height: '3em', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                    {project.description}
+                    {project.description || project.shortDescription}
                   </p>
                 </div>
 
-                {}
+                {/* Tech Tags */}
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', padding: '0 0.5rem' }}>
                   {(project.tags || project.techStack || []).slice(0, 3).map((tag, i) => (
                     <span key={i} style={{ 
@@ -145,13 +147,13 @@ const Showcase = () => {
                   )}
                 </div>
 
-                {}
+                {/* Footer action */}
                  <div style={{ 
                   marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--accent-main)'
                 }}>
                    <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      CHI TIẾT <ChevronRight size={14} />
+                      {t('showcase.view_details', 'DETAILS')} <ChevronRight size={14} />
                    </span>
                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: 0.7, fontSize: '0.75rem', color: '#10b981' }}>
                       <Eye size={14} /> {project.views || project.downloadCount || 0}

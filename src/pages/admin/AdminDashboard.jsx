@@ -26,9 +26,20 @@ import {
 } from 'lucide-react';
 
 import { db } from '../../firebase';
-import { doc, setDoc, collection, getDocs, deleteDoc, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { 
+  doc, 
+  setDoc, 
+  collection, 
+  getDocs, 
+  deleteDoc, 
+  query, 
+  orderBy, 
+  limit, 
+  onSnapshot,
+  getCountFromServer 
+} from 'firebase/firestore';
 import { Link } from 'react-router-dom';
-import { useConfig, DEFAULT_CONFIG } from '../../context/ConfigContext';
+import { useConfig } from '../../context/ConfigContext';
 import SocialIcon from '../../components/SocialIcon';
 import { APP_PRESET_LOGOS, renderAppLogo } from '../../constants/appLogos';
 import { APP_ROUTES } from '../../constants/routes';
@@ -38,56 +49,50 @@ const SOCIAL_PLATFORMS = [
   { name: 'Facebook', color: '#1877F2', icon: 'Facebook' },
   { name: 'YouTube', color: '#FF0000', icon: 'YouTube' },
   { name: 'GitHub', color: '#181717', icon: 'GitHub' },
-  { name: 'TikTok', color: '#000000', icon: 'TikTok' },
   { name: 'Telegram', color: '#26A5E4', icon: 'Telegram' },
-  { name: 'X (Twitter)', color: '#000000', icon: 'X' },
+  { name: 'LinkedIn', color: '#0A66C2', icon: 'LinkedIn' },
+  { name: 'Twitter / X', color: '#000000', icon: 'Twitter' },
   { name: 'Instagram', color: '#E4405F', icon: 'Instagram' },
   { name: 'Discord', color: '#5865F2', icon: 'Discord' },
-  { name: 'Zalo', color: '#0068FF', icon: 'Zalo' },
-  { name: 'Reddit', color: '#FF4500', icon: 'Reddit' },
-  { name: 'Threads', color: '#000000', icon: 'Threads' },
-  { name: 'Website', color: '#4B5563', icon: 'Globe' }
+  { name: 'TikTok', color: '#000000', icon: 'TikTok' },
+  { name: 'Zalo', color: '#0068FF', icon: 'Zalo' }
 ];
 
 const AdminDashboard = () => {
-  const { config, loading } = useConfig();
-  const [activeTab, setActiveTab] = useState('general');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { config, setConfig } = useConfig();
   const [localConfig, setLocalConfig] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [homepageSubTab, setHomepageSubTab] = useState('filmstrip');
   const [status, setStatus] = useState('');
-  const [adjustmentModal, setAdjustmentModal] = useState({ isOpen: false, src: '', callback: null, aspect: 16 / 9 });
-  const [activeIconPickerIdx, setActiveIconPickerIdx] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [usersList, setUsersList] = useState([]);
+  const [blogPosts, setBlogPosts] = useState([]);
+  const [projectsList, setProjectsList] = useState([]);
+  const [analyticsData, setAnalyticsData] = useState([]);
+  const [totalLifetimeHits, setTotalLifetimeHits] = useState(0);
+  const [analyticsFilter, setAnalyticsFilter] = useState('all');
+  const [trafficPage, setTrafficPage] = useState(1);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Logo Picker States
+  const [activeSocialPickerIdx, setActiveSocialPickerIdx] = useState(null);
   const [activeAppLogoPickerIdx, setActiveAppLogoPickerIdx] = useState(null);
-  const [zoom, setZoom] = useState(1);
-  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+
+  // Image Cropper State
+  const [cropperModal, setCropperModal] = useState({
+    isOpen: false,
+    imageSrc: '',
+    aspectRatio: 1,
+    zoom: 1,
+    pan: { x: 0, y: 0 },
+    onSaveCallback: null
+  });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const previewContainerRef = useRef(null);
 
-  // Homepage sub-tab state
-  const [homepageSubTab, setHomepageSubTab] = useState('filmstrip'); // 'filmstrip' | 'apps' | 'quotes'
+  const handleSaveRef = useRef(null);
 
-  // Users state
-  const [usersList, setUsersList] = useState([]);
-  const [userModal, setUserModal] = useState({ isOpen: false, mode: 'add', data: {} });
-
-  // Analytics state
-  const [analyticsData, setAnalyticsData] = useState([]);
-  const [analyticsFilter, setAnalyticsFilter] = useState('all'); // 'all' | 'desktop' | 'mobile'
-  const [trafficPage, setTrafficPage] = useState(1);
-  const TRAFFIC_PER_PAGE = 20;
-
-  // Blog State
-  const [blogPosts, setBlogPosts] = useState([]);
-
-  // Projects State
-  const [projectsList, setProjectsList] = useState([]);
-  const [projectModal, setProjectModal] = useState({ isOpen: false, mode: 'add', data: {} });
-
-  const handleSaveRef = useRef();
-
-  // Keyboard shortcut: Ctrl+S / Cmd+S to Save
+  // Keyboard shortcut: Ctrl + S to save
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -112,9 +117,21 @@ const AdminDashboard = () => {
     if (activeTab === 'projects') fetchProjects();
   }, [activeTab]);
 
+  // Fetch total lifetime hits count
+  const fetchTotalHitsCount = async () => {
+    try {
+      const coll = collection(db, 'system_analytics');
+      const snapshot = await getCountFromServer(coll);
+      setTotalLifetimeHits(snapshot.data().count);
+    } catch (err) {
+      console.error("Error fetching total hits count:", err);
+    }
+  };
+
   // Realtime Traffic Analytics Stream
   useEffect(() => {
-    if (activeTab === 'analytics') {
+    if (activeTab === 'analytics' || activeTab === 'overview') {
+      fetchTotalHitsCount();
       const q = query(collection(db, 'system_analytics'), orderBy('timestamp', 'desc'), limit(200));
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const data = [];
@@ -122,6 +139,7 @@ const AdminDashboard = () => {
           data.push({ id: d.id, ...d.data() });
         });
         setAnalyticsData(data);
+        fetchTotalHitsCount();
       }, (err) => {
         console.error("Analytics stream error:", err);
       });
@@ -175,7 +193,7 @@ const AdminDashboard = () => {
     const nowSec = Math.floor(Date.now() / 1000);
     return groupedVisitors.filter(v => {
       const lastSec = v.lastTimestamp?.seconds || (v.lastTimestamp ? Math.floor(new Date(v.lastTimestamp).getTime() / 1000) : 0);
-      return (nowSec - lastSec) <= 300; // Hoạt động trong 5 phút gần đây
+      return (nowSec - lastSec) <= 300; // Active in last 5 mins
     }).length;
   }, [groupedVisitors]);
 
@@ -189,8 +207,8 @@ const AdminDashboard = () => {
     try {
       const querySnapshot = await getDocs(collection(db, 'users'));
       const users = [];
-      querySnapshot.forEach((doc) => {
-        users.push({ id: doc.id, ...doc.data() });
+      querySnapshot.forEach((docSnap) => {
+        users.push({ id: docSnap.id, ...docSnap.data() });
       });
       setUsersList(users);
     } catch (err) {
@@ -203,8 +221,8 @@ const AdminDashboard = () => {
       const q = query(collection(db, 'blog_posts'), orderBy('timestamp', 'desc'));
       const querySnapshot = await getDocs(q);
       const posts = [];
-      querySnapshot.forEach((doc) => {
-        posts.push({ id: doc.id, ...doc.data() });
+      querySnapshot.forEach((docSnap) => {
+        posts.push({ id: docSnap.id, ...docSnap.data() });
       });
       setBlogPosts(posts);
     } catch (err) {
@@ -222,93 +240,40 @@ const AdminDashboard = () => {
       projs.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
       setProjectsList(projs);
     } catch (err) {
-      console.error("fetchProjects error:", err);
+      console.error(err);
     }
   };
 
-  const deleteBlogPost = async (postId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) return;
+  const deleteBlogPost = async (id) => {
+    if (!window.confirm('Are you sure you want to permanently delete this article?')) return;
     try {
-      await deleteDoc(doc(db, 'blog_posts', postId));
-      setBlogPosts(prev => prev.filter(p => p.id !== postId));
-      showToast('Đã xóa bài viết thành công!');
+      await deleteDoc(doc(db, 'blog_posts', id));
+      setBlogPosts(prev => prev.filter(p => p.id !== id));
+      showToast('Article deleted successfully!');
     } catch (err) {
-      alert('Lỗi xóa bài viết: ' + err.message);
+      alert('Delete error: ' + err.message);
     }
   };
 
-  const deleteProjectRecord = async (projId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa dự án này?')) return;
+  const deleteProjectRecord = async (id) => {
+    if (!window.confirm('Are you sure you want to permanently delete this project?')) return;
     try {
-      await deleteDoc(doc(db, 'projects', projId));
-      setProjectsList(prev => prev.filter(p => p.id !== projId));
-      showToast('Đã xóa dự án thành công!');
+      await deleteDoc(doc(db, 'projects', id));
+      setProjectsList(prev => prev.filter(p => p.id !== id));
+      showToast('Project deleted successfully!');
     } catch (err) {
-      alert('Lỗi xóa dự án: ' + err.message);
+      alert('Delete error: ' + err.message);
     }
   };
 
-  const handleSaveProject = async () => {
+  const deleteUserRecord = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this user?')) return;
     try {
-      const data = { ...projectModal.data };
-      if (!data.title) {
-        alert('Vui lòng nhập tên dự án!');
-        return;
-      }
-      if (typeof data.tags === 'string') {
-        data.tags = data.tags.split(',').map(t => t.trim()).filter(Boolean);
-      }
-      const targetId = projectModal.mode === 'add' ? (data.slug || 'proj_' + Date.now().toString(36)) : data.id;
-      await setDoc(doc(db, 'projects', targetId), {
-        ...data,
-        id: targetId,
-        thumbnail: data.thumbnail || data.image || '',
-        demoUrl: data.demoUrl || '',
-        githubUrl: data.githubUrl || '',
-        order: Number(data.order) || 0,
-        createdAt: data.createdAt || new Date().toISOString()
-      }, { merge: true });
-
-      setUserModal({ isOpen: false, mode: 'add', data: {} });
-      setProjectModal({ isOpen: false, mode: 'add', data: {} });
-      fetchProjects();
-      showToast('Đã lưu thông tin dự án!');
+      await deleteDoc(doc(db, 'users', id));
+      setUsersList(prev => prev.filter(u => u.id !== id));
+      showToast('User deleted successfully!');
     } catch (err) {
-      alert('Lỗi lưu dự án: ' + err.message);
-    }
-  };
-
-  const handleSaveUser = async () => {
-    try {
-      const data = { ...userModal.data };
-      if (!data.email || !data.username) {
-        alert('Vui lòng điền Email và Username!');
-        return;
-      }
-      const targetId = userModal.mode === 'add' ? Date.now().toString() : data.id;
-      await setDoc(doc(db, 'users', targetId), {
-        ...data,
-        id: targetId,
-        role: data.role || 'user',
-        createdAt: data.createdAt || new Date().toISOString()
-      }, { merge: true });
-
-      setUserModal({ isOpen: false, mode: 'add', data: {} });
-      fetchUsers();
-      showToast('Đã lưu thông tin tài khoản!');
-    } catch (err) {
-      alert('Lỗi lưu tài khoản: ' + err.message);
-    }
-  };
-
-  const deleteUserRecord = async (userId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa tài khoản này?')) return;
-    try {
-      await deleteDoc(doc(db, 'users', userId));
-      setUsersList(prev => prev.filter(u => u.id !== userId));
-      showToast('Đã xóa tài khoản thành công!');
-    } catch (err) {
-      alert('Lỗi xóa tài khoản: ' + err.message);
+      alert('Delete error: ' + err.message);
     }
   };
 
@@ -317,60 +282,34 @@ const AdminDashboard = () => {
     setTimeout(() => setStatus(''), 3000);
   };
 
-  const computeConfigDiff = (original, current) => {
-    if (!original) return current;
-    const diff = {};
-
-    if (JSON.stringify(original.general || {}) !== JSON.stringify(current.general || {})) {
-      diff.general = current.general || {};
-    }
-    if (JSON.stringify(original.appearance || {}) !== JSON.stringify(current.appearance || {})) {
-      diff.appearance = current.appearance || {};
-    }
-    if (JSON.stringify(original.social_links || []) !== JSON.stringify(current.social_links || [])) {
-      diff.social_links = current.social_links || [];
-    }
-    if (JSON.stringify(original.maintenance || {}) !== JSON.stringify(current.maintenance || {})) {
-      diff.maintenance = current.maintenance || {};
-    }
-    if (JSON.stringify(original.apps || []) !== JSON.stringify(current.apps || [])) {
-      diff.apps = current.apps || [];
-    }
-    if (JSON.stringify(original.content?.quotes || []) !== JSON.stringify(current.content?.quotes || []) ||
-      original.content?.filmStripSpeed !== current.content?.filmStripSpeed) {
-      diff.content = {
-        quotes: current.content?.quotes || [],
-        filmStripSpeed: current.content?.filmStripSpeed || 45
-      };
-    }
-    return diff;
-  };
-
   const handleSave = async () => {
     if (!localConfig) return;
-    const diffPayload = computeConfigDiff(config, localConfig);
-    const filmStripChanged = JSON.stringify(config?.content?.filmStripImages || []) !== JSON.stringify(localConfig.content?.filmStripImages || []);
-
-    if (Object.keys(diffPayload).length === 0 && !filmStripChanged) {
-      showToast('Không có thay đổi nào cần lưu.');
-      return;
-    }
 
     setIsSaving(true);
     try {
-      const promises = [];
-      if (Object.keys(diffPayload).length > 0) {
-        promises.push(setDoc(doc(db, 'site_config', 'main_config'), diffPayload, { merge: true }));
-      }
-      if (filmStripChanged) {
-        promises.push(setDoc(doc(db, 'system', 'memories'), {
+      const payload = {
+        appearance: localConfig.appearance || {},
+        social_links: localConfig.social_links || [],
+        apps: localConfig.apps || [],
+        content: {
+          quotes: localConfig.content?.quotes || [],
+          filmStripSpeed: Number(localConfig.content?.filmStripSpeed) || 45,
           filmStripImages: localConfig.content?.filmStripImages || []
-        }, { merge: true }));
-      }
+        },
+        maintenance: localConfig.maintenance || {}
+      };
+
+      const promises = [
+        setDoc(doc(db, 'site_config', 'main_config'), payload, { merge: true }),
+        setDoc(doc(db, 'system', 'memories'), {
+          filmStripImages: localConfig.content?.filmStripImages || []
+        }, { merge: true })
+      ];
       await Promise.all(promises);
-      showToast('Đã lưu thành công cấu hình!');
+      if (setConfig) setConfig(localConfig);
+      showToast('Configuration saved successfully!');
     } catch (err) {
-      alert('Lỗi khi lưu cấu hình: ' + err.message);
+      alert('Save error: ' + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -378,452 +317,331 @@ const AdminDashboard = () => {
   handleSaveRef.current = handleSave;
 
   const updateNested = (category, field, value) => {
-    setLocalConfig(prev => {
-      const updated = { ...prev };
-      if (!updated[category]) updated[category] = {};
-      updated[category][field] = value;
-      return updated;
-    });
-  };
-
-  const compressImage = (base64) => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.src = base64;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        const MAX_DIM = 1200;
-        if (width > height) {
-          if (width > MAX_DIM) {
-            height *= MAX_DIM / width;
-            width = MAX_DIM;
-          }
-        } else {
-          if (height > MAX_DIM) {
-            width *= MAX_DIM / height;
-            height = MAX_DIM;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
-      };
-    });
-  };
-
-  const handleFileUpload = (e, callback, aspect = 16 / 9) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        alert('Kích thước ảnh tối đa là 10MB.');
-        return;
+    setLocalConfig(prev => ({
+      ...prev,
+      [category]: {
+        ...(prev[category] || {}),
+        [field]: value
       }
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const compressed = await compressImage(reader.result);
-        setAdjustmentModal({
-          isOpen: true,
-          src: compressed,
-          callback,
-          aspect
-        });
-        setZoom(1);
-        setDragPos({ x: 0, y: 0 });
-      };
-      reader.readAsDataURL(file);
-    }
+    }));
   };
 
-  const handleReAdjust = (src, callback, aspect = 16 / 9) => {
-    setAdjustmentModal({
-      isOpen: true,
-      src,
-      callback,
-      aspect
-    });
-    setZoom(1);
-    setDragPos({ x: 0, y: 0 });
-  };
+  const handleFileUpload = (e, callback, aspectRatio = 1) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  const handleMouseDown = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - dragPos.x, y: e.clientY - dragPos.y });
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDragging) return;
-    setDragPos({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y
-    });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleTouchStart = (e) => {
-    if (e.touches.length === 1) {
-      setIsDragging(true);
-      setDragStart({
-        x: e.touches[0].clientX - dragPos.x,
-        y: e.touches[0].clientY - dragPos.y
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setCropperModal({
+        isOpen: true,
+        imageSrc: event.target.result,
+        aspectRatio,
+        zoom: 1,
+        pan: { x: 0, y: 0 },
+        onSaveCallback: callback
       });
-    }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
-  const handleTouchMove = (e) => {
-    if (!isDragging || e.touches.length !== 1) return;
-    setDragPos({
-      x: e.touches[0].clientX - dragStart.x,
-      y: e.touches[0].clientY - dragStart.y
+  const handleReAdjust = (imgUrl, callback, aspectRatio = 16 / 9) => {
+    setCropperModal({
+      isOpen: true,
+      imageSrc: imgUrl,
+      aspectRatio,
+      zoom: 1,
+      pan: { x: 0, y: 0 },
+      onSaveCallback: callback
     });
   };
 
-  const confirmCrop = () => {
-    if (!adjustmentModal.src) return;
+  const handleCropSave = () => {
+    const canvas = document.createElement('canvas');
     const img = new Image();
-    img.src = adjustmentModal.src;
-    img.onload = () => {
-      const targetAspect = adjustmentModal.aspect || 16 / 9;
-      const targetWidth = 1200;
-      const targetHeight = Math.round(targetWidth / targetAspect);
+    img.crossOrigin = 'anonymous';
+    img.src = cropperModal.imageSrc;
 
-      const canvas = document.createElement('canvas');
+    img.onload = () => {
+      const targetWidth = cropperModal.aspectRatio === 1 ? 512 : 1280;
+      const targetHeight = targetWidth / cropperModal.aspectRatio;
       canvas.width = targetWidth;
       canvas.height = targetHeight;
       const ctx = canvas.getContext('2d');
 
-      const container = previewContainerRef.current;
-      const cWidth = container ? container.clientWidth : 480;
-      const cHeight = container ? container.clientHeight : Math.round(480 / targetAspect);
-
-      let baseW, baseH;
-      const imgAspect = img.width / img.height;
-      if (imgAspect > targetAspect) {
-        baseH = cHeight;
-        baseW = cHeight * imgAspect;
-      } else {
-        baseW = cWidth;
-        baseH = cWidth / imgAspect;
-      }
-
-      const scale = targetWidth / cWidth;
-      const finalW = baseW * zoom * scale;
-      const finalH = baseH * zoom * scale;
-
-      const drawX = (targetWidth - finalW) / 2 + (dragPos.x * scale);
-      const drawY = (targetHeight - finalH) / 2 + (dragPos.y * scale);
-
-      ctx.fillStyle = '#0a0a0c';
+      ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, targetWidth, targetHeight);
-      ctx.drawImage(img, drawX, drawY, finalW, finalH);
 
-      const finalBase64 = canvas.toDataURL('image/jpeg', 0.85);
-      if (adjustmentModal.callback) {
-        adjustmentModal.callback(finalBase64);
+      const baseScale = Math.max(targetWidth / img.width, targetHeight / img.height);
+      const currentScale = baseScale * cropperModal.zoom;
+
+      const drawWidth = img.width * currentScale;
+      const drawHeight = img.height * currentScale;
+      const drawX = (targetWidth - drawWidth) / 2 + cropperModal.pan.x;
+      const drawY = (targetHeight - drawHeight) / 2 + cropperModal.pan.y;
+
+      ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+
+      const croppedBase64 = canvas.toDataURL('image/webp', 0.85);
+      if (cropperModal.onSaveCallback) {
+        cropperModal.onSaveCallback(croppedBase64);
       }
-      setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16 / 9 });
-      setDragPos({ x: 0, y: 0 });
-      setZoom(1);
+      setCropperModal(prev => ({ ...prev, isOpen: false }));
+      showToast('Image cropped and applied successfully!');
     };
   };
 
-  if (loading || !localConfig) {
+  if (!localConfig) {
     return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f7', color: '#1d1d1f' }}>
-        <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Đang tải bảng điều khiển...</div>
+      <div className="admin-loading-screen">
+        <div className="spinner" />
+        <p>Loading BCT Studio workspace...</p>
       </div>
     );
   }
 
-  // 6 Master Tabs
-  const tabs = [
-    { id: 'general', label: 'CÀI ĐẶT & TRẠNG THÁI', icon: <Settings size={18} /> },
-    { id: 'homepage', label: 'NỘI DUNG TRANG CHỦ', icon: <Home size={18} /> },
-    { id: 'blog', label: 'BÀI VIẾT & BLOG', icon: <FileText size={18} /> },
-    { id: 'projects', label: 'DỰ ÁN & PHẦN MỀM', icon: <Package size={18} /> },
-    { id: 'users', label: 'QUẢN LÝ TÀI KHOẢN', icon: <Users size={18} /> },
-    { id: 'analytics', label: 'THỐNG KÊ TRAFFIC', icon: <Activity size={18} /> }
-  ];
-
   return (
     <div className="admin-layout">
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {status && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="admin-toast"
+          >
+            <CheckCircle size={16} />
+            <span>{status}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Sidebar Navigation */}
-      <aside className={`admin-sidebar ${mobileMenuOpen ? 'open' : ''}`}>
-        <div className="admin-brand">
-          <div className="brand-icon-wrapper">
-            <img src={localConfig.general?.logoUrl || '/logobct.png'} alt="Logo" />
-          </div>
+      <aside className={`admin-sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
+        <div className="admin-sidebar-header">
+          <img src={localConfig.appearance?.logoUrl || '/logobct.png'} alt="Logo" className="admin-brand-logo" />
           <div className="admin-brand-info">
-            <span className="admin-brand-title">{localConfig.general?.siteTitle || 'BCT0902 Studio'}</span>
-            <span className="admin-brand-subtitle">Quản Trị Hệ Thống</span>
+            <h2>BCT STUDIO</h2>
+            <span>WORKSPACE ADMIN</span>
           </div>
         </div>
 
-        <nav className="admin-nav">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              className={`admin-nav-item ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab(tab.id);
-                setMobileMenuOpen(false);
-              }}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className="admin-sidebar-footer">
-          <button className="logout-btn" onClick={() => {
-            localStorage.removeItem('bct_admin_session');
-            window.location.href = '/login';
-          }}>
-            Đăng Xuất
+        <nav className="admin-nav-menu">
+          <button
+            className={`admin-nav-item ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('overview'); setIsMobileMenuOpen(false); }}
+          >
+            <Home size={18} />
+            <span>Overview</span>
           </button>
-        </div>
+
+          <button
+            className={`admin-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }}
+          >
+            <Settings size={18} />
+            <span>System & Security</span>
+          </button>
+
+          <button
+            className={`admin-nav-item ${activeTab === 'homepage' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('homepage'); setIsMobileMenuOpen(false); }}
+          >
+            <Palette size={18} />
+            <span>Home Content</span>
+          </button>
+
+          <button
+            className={`admin-nav-item ${activeTab === 'socials' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('socials'); setIsMobileMenuOpen(false); }}
+          >
+            <Globe size={18} />
+            <span>Social Network</span>
+          </button>
+
+          <button
+            className={`admin-nav-item ${activeTab === 'projects' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('projects'); setIsMobileMenuOpen(false); }}
+          >
+            <Package size={18} />
+            <span>Projects & Tools</span>
+          </button>
+
+          <button
+            className={`admin-nav-item ${activeTab === 'blog' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('blog'); setIsMobileMenuOpen(false); }}
+          >
+            <FileText size={18} />
+            <span>Blog Articles</span>
+          </button>
+
+          <button
+            className={`admin-nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('analytics'); setIsMobileMenuOpen(false); }}
+          >
+            <Activity size={18} />
+            <span>Traffic Analytics</span>
+          </button>
+
+          <button
+            className={`admin-nav-item ${activeTab === 'users' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('users'); setIsMobileMenuOpen(false); }}
+          >
+            <Users size={18} />
+            <span>User Accounts</span>
+          </button>
+        </nav>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="admin-content">
-        <header className="admin-header">
-          <div className="admin-header-titles">
-            <h1>{tabs.find(t => t.id === activeTab)?.label}</h1>
-            <p>Không gian quản trị BCT Studio</p>
+      {/* Main Body */}
+      <main className="admin-main">
+        {/* Top Sticky Bar */}
+        <header className="admin-topbar">
+          <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            <Menu size={20} />
+          </button>
+
+          <div className="topbar-title">
+            <h1>
+              {activeTab === 'overview' && 'SYSTEM OVERVIEW'}
+              {activeTab === 'settings' && 'SYSTEM & SECURITY'}
+              {activeTab === 'homepage' && 'HOME CONTENT'}
+              {activeTab === 'socials' && 'SOCIAL LINKS'}
+              {activeTab === 'projects' && 'PROJECTS & SOFTWARE'}
+              {activeTab === 'blog' && 'BLOG & ARTICLES'}
+              {activeTab === 'analytics' && 'TRAFFIC ANALYTICS'}
+              {activeTab === 'users' && 'USER MANAGEMENT'}
+            </h1>
+            <p>BCT Studio Administration Space</p>
           </div>
 
-          <div className="admin-header-actions">
-            <a href="/" target="_blank" rel="noopener noreferrer" className="btn-ghost">
-              <ExternalLink size={15} />
-              <span>Xem Web</span>
-            </a>
-            <button className="save-btn" onClick={handleSave} disabled={isSaving}>
-              <Save size={15} />
-              <span>{isSaving ? 'Đang lưu...' : 'Lưu Thay Đổi'}</span>
+          <div className="topbar-actions">
+            <Link to="/" target="_blank" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none' }}>
+              <ExternalLink size={16} />
+              <span>Live Site</span>
+            </Link>
+            <button
+              className="btn-primary"
+              onClick={handleSave}
+              disabled={isSaving}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <Save size={16} />
+              <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
             </button>
           </div>
         </header>
 
-        <div className="admin-frame">
+        {/* Tab Content Container */}
+        <div className="admin-content-body">
           <AnimatePresence mode="wait">
-            {/* TAB 1: CÀI ĐẶT & TRẠNG THÁI */}
-            {activeTab === 'general' && (
-              <motion.div key="general" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                {/* 1.1 Logo & Nhận diện */}
-                <div className="admin-card">
-                  <div className="config-section-title">
-                    <ImageIcon size={18} /> LOGO VÀ NHẬN DIỆN THƯƠNG HIỆU
+            {/* TAB 0: OVERVIEW */}
+            {activeTab === 'overview' && (
+              <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                {/* Metric Summary Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+                  <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }} />
+                      ACTIVE NOW
+                    </div>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#10b981', letterSpacing: '-0.03em' }}>{activeNowCount}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Active in last 5 minutes</div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                    <div style={{ width: '80px', height: '80px', background: '#ffffff', borderRadius: '16px', border: '1px solid var(--apple-border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                      <img src={localConfig.appearance?.logoUrl || localConfig.general?.logoUrl || '/logobct.png'} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>TOTAL LIFETIME VISITS</div>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--apple-text-primary)', letterSpacing: '-0.03em' }}>
+                      {totalLifetimeHits > 0 ? totalLifetimeHits.toLocaleString() : analyticsData.length}
                     </div>
-                    <div style={{ display: 'flex', gap: '0.6rem' }}>
-                      <label className="btn-ghost" style={{ cursor: 'pointer' }}>
-                        <Upload size={15} />
-                        <span>Tải Logo Mới</span>
-                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, (res) => {
-                          updateNested('appearance', 'logoUrl', res);
-                          updateNested('general', 'logoUrl', res);
-                        }, 1)} />
-                      </label>
-                      {(localConfig.appearance?.logoUrl || localConfig.general?.logoUrl) && (
-                        <button className="btn-ghost" onClick={() => handleReAdjust(localConfig.appearance?.logoUrl || localConfig.general?.logoUrl, (res) => {
-                          updateNested('appearance', 'logoUrl', res);
-                          updateNested('general', 'logoUrl', res);
-                        }, 1)}>
-                          <Crop size={15} /> Căn Chỉnh
-                        </button>
-                      )}
-                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>All-time page view events</div>
                   </div>
 
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Tên Thương Hiệu / Tiêu Đề (Site Title)</label>
-                    <input type="text" className="admin-input" value={localConfig.general?.siteTitle || ''} onChange={(e) => updateNested('general', 'siteTitle', e.target.value)} placeholder="BCT0902 Studio" />
+                  <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>PUBLISHED PROJECTS</div>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--apple-blue)', letterSpacing: '-0.03em' }}>{projectsList.length}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Active showcases and tools</div>
+                  </div>
+
+                  <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>BLOG POSTS</div>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#f59e0b', letterSpacing: '-0.03em' }}>{blogPosts.length}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Published technology articles</div>
                   </div>
                 </div>
 
-                {/* 1.2 Mạng Xã Hội */}
+                {/* Quick Shortcuts */}
                 <div className="admin-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div>
-                      <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
-                        <Globe size={18} /> QUẢN LÝ MẠNG XÃ HỘI ({(localConfig.social_links || []).length})
-                      </div>
-                      <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
-                        Chọn logo thương hiệu có sẵn hoặc tải ảnh logo riêng, sau đó nhập liên kết URL.
+                  <div className="config-section-title">
+                    <Activity size={18} /> QUICK MANAGEMENT SHORTCUTS
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setActiveTab('projects')}
+                      style={{ padding: '1.25rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}
+                    >
+                      <strong style={{ fontSize: '1rem', color: 'var(--apple-text-primary)' }}>📦 Manage Projects</strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>Publish and edit interactive case studies and tools</span>
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setActiveTab('blog')}
+                      style={{ padding: '1.25rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}
+                    >
+                      <strong style={{ fontSize: '1rem', color: 'var(--apple-text-primary)' }}>✍️ Write Blog Post</strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>Create technical insights with rich Markdown</span>
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setActiveTab('settings')}
+                      style={{ padding: '1.25rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}
+                    >
+                      <strong style={{ fontSize: '1rem', color: 'var(--apple-text-primary)' }}>🔒 Maintenance Control</strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>Lock or unlock individual site features</span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* TAB 1: SETTINGS & MAINTENANCE */}
+            {activeTab === 'settings' && (
+              <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                {/* 1.1 Brand Identity */}
+                <div className="admin-card">
+                  <div className="config-section-title">
+                    <ImageIcon size={18} /> BRAND IDENTITY & LOGO
+                  </div>
+                  <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ width: '90px', height: '90px', borderRadius: '18px', background: '#f5f5f7', border: '1px solid var(--apple-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px' }}>
+                      <img src={localConfig.appearance?.logoUrl || '/logobct.png'} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <label className="add-btn" style={{ cursor: 'pointer', width: 'fit-content' }}>
+                        <Upload size={15} /> Upload New Logo
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => handleFileUpload(e, (res) => updateNested('appearance', 'logoUrl', res), 1)}
+                        />
+                      </label>
+                      <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.8rem' }}>
+                        Recommended ratio 1:1 (Square PNG, SVG, or WebP with transparent background).
                       </p>
                     </div>
-                    <button className="add-btn" onClick={() => {
-                      const newSocials = [...(localConfig.social_links || [])];
-                      newSocials.push({ icon: 'Globe', url: '', customIcon: '' });
-                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                    }}>
-                      <Plus size={15} /> Thêm Mạng Xã Hội
-                    </button>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {(localConfig.social_links || []).map((social, idx) => (
-                      <div key={idx} className="social-compact-row">
-                        <div style={{ position: 'relative' }}>
-                          <button
-                            type="button"
-                            className="social-logo-trigger"
-                            onClick={() => setActiveIconPickerIdx(activeIconPickerIdx === idx ? null : idx)}
-                            title="Bấm để đổi Logo"
-                          >
-                            {social.customIcon ? (
-                              <img src={social.customIcon} alt="social-logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                            ) : social.icon ? (
-                              <SocialIcon name={social.icon} size={22} />
-                            ) : (
-                              <Globe size={22} />
-                            )}
-                          </button>
-
-                          {activeIconPickerIdx === idx && (
-                            <div className="social-picker-dropdown">
-                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.6rem' }}>
-                                CHỌN LOGO THƯƠNG HIỆU CÓ SẴN
-                              </div>
-                              <div className="social-picker-grid">
-                                {SOCIAL_PLATFORMS.map((platform) => (
-                                  <button
-                                    key={platform.name}
-                                    type="button"
-                                    className="social-preset-btn"
-                                    onClick={() => {
-                                      const newSocials = [...localConfig.social_links];
-                                      newSocials[idx] = { ...newSocials[idx], icon: platform.icon, customIcon: '' };
-                                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                                      setActiveIconPickerIdx(null);
-                                    }}
-                                  >
-                                    <SocialIcon name={platform.icon} size={18} color={platform.color} />
-                                    <span>{platform.name}</span>
-                                  </button>
-                                ))}
-                              </div>
-
-                              <div style={{ borderTop: '1px solid var(--apple-border)', paddingTop: '0.65rem', marginTop: '0.5rem' }}>
-                                <label className="btn-ghost" style={{ width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.5rem' }}>
-                                  <Upload size={14} />
-                                  <span>Tải Logo Riêng Từ Máy</span>
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    style={{ display: 'none' }}
-                                    onChange={(e) => handleFileUpload(e, (res) => {
-                                      const newSocials = [...localConfig.social_links];
-                                      newSocials[idx] = { ...newSocials[idx], customIcon: res, icon: '' };
-                                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                                      setActiveIconPickerIdx(null);
-                                    }, 1)}
-                                  />
-                                </label>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <input
-                          type="url"
-                          className="admin-input"
-                          placeholder="https://..."
-                          value={social.url || ''}
-                          style={{ flex: 1 }}
-                          onChange={(e) => {
-                            const newSocials = [...localConfig.social_links];
-                            newSocials[idx] = { ...newSocials[idx], url: e.target.value };
-                            setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                          }}
-                        />
-
-                        <button
-                          type="button"
-                          className="delete-btn"
-                          onClick={() => {
-                            const newSocials = (localConfig.social_links || []).filter((_, i) => i !== idx);
-                            setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
-                          }}
-                          aria-label="Xóa mạng xã hội"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    ))}
                   </div>
                 </div>
 
-                {/* 1.3 Hiệu ứng giao diện (Apple iOS Switches) */}
+                {/* 1.2 Route Maintenance Registry */}
                 <div className="admin-card">
                   <div className="config-section-title">
-                    <Palette size={18} /> HIỆU ỨNG GIAO DIỆN HỆ THỐNG
-                  </div>
-
-                  <div className="apple-toggle-row">
-                    <div className="apple-toggle-info">
-                      <h4>Độ mờ nền phía sau (Background Blur)</h4>
-                      <p>Hiệu ứng kính mờ chiều sâu trên nền trang chủ</p>
-                    </div>
-                    <button
-                      type="button"
-                      className={`apple-switch ${localConfig.appearance?.backgroundBlur ? 'active' : ''}`}
-                      onClick={() => updateNested('appearance', 'backgroundBlur', !localConfig.appearance?.backgroundBlur)}
-                    >
-                      <div className="apple-switch-handle" />
-                    </button>
-                  </div>
-
-                  <div className="apple-toggle-row">
-                    <div className="apple-toggle-info">
-                      <h4>Hiệu ứng hạt bụi phát sáng (Particle Effects)</h4>
-                      <p>Các đốm sáng chuyển động lơ lửng trong không gian</p>
-                    </div>
-                    <button
-                      type="button"
-                      className={`apple-switch ${localConfig.appearance?.particleEffects ? 'active' : ''}`}
-                      onClick={() => updateNested('appearance', 'particleEffects', !localConfig.appearance?.particleEffects)}
-                    >
-                      <div className="apple-switch-handle" />
-                    </button>
-                  </div>
-
-                  <div className="apple-toggle-row">
-                    <div className="apple-toggle-info">
-                      <h4>Lưới tọa độ hình học (Grid Overlay)</h4>
-                      <p>Đường lưới ma trận nhẹ nhàng phủ toàn màn hình</p>
-                    </div>
-                    <button
-                      type="button"
-                      className={`apple-switch ${localConfig.appearance?.gridOverlay ? 'active' : ''}`}
-                      onClick={() => updateNested('appearance', 'gridOverlay', !localConfig.appearance?.gridOverlay)}
-                    >
-                      <div className="apple-switch-handle" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* 1.4 Quản Lý Trạng Thái Bảo Trì (Dynamic Route Registry) */}
-                <div className="admin-card">
-                  <div className="config-section-title">
-                    <Lock size={18} /> QUẢN LÝ TRẠNG THÁI BẢO TRÌ CÁC TRANG
+                    <Lock size={18} /> ROUTE MAINTENANCE CONTROL
                   </div>
                   <p style={{ margin: '-0.75rem 0 1.25rem 0', color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
-                    Bật công tắc để khóa bảo trì tạm thời từng phân hệ trang web. Khi khóa, người dùng vãng lai sẽ thấy màn hình bảo trì.
+                    Toggle maintenance mode for individual routes. When locked, guests will see the maintenance screen.
                   </p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -840,7 +658,7 @@ const AdminDashboard = () => {
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
                             <span style={{ fontSize: '0.78rem', fontWeight: 600, color: isLocked ? 'var(--apple-red)' : 'var(--apple-green)' }}>
-                              {isLocked ? 'ĐANG KHÓA BẢO TRÌ' : 'CÔNG KHAI'}
+                              {isLocked ? 'LOCKED' : 'PUBLIC'}
                             </span>
                             <button
                               type="button"
@@ -858,10 +676,10 @@ const AdminDashboard = () => {
               </motion.div>
             )}
 
-            {/* TAB 2: NỘI DUNG TRANG CHỦ */}
+            {/* TAB 2: HOME CONTENT */}
             {activeTab === 'homepage' && (
               <motion.div key="homepage" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                {/* Segmented Sub-Tabs Bar */}
+                {/* Sub-Tabs Bar */}
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.75rem', background: '#ffffff', padding: '6px', borderRadius: '14px', border: '1px solid var(--apple-border)', width: 'fit-content', boxShadow: '0 1px 3px rgba(0,0,0,0.03)', flexWrap: 'wrap' }}>
                   <button
                     type="button"
@@ -870,7 +688,7 @@ const AdminDashboard = () => {
                     style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.1rem', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600 }}
                   >
                     <Film size={15} />
-                    <span>Dải Phim Kỹ Thuật Số ({(localConfig.content?.filmStripImages || []).length})</span>
+                    <span>Digital Filmstrip ({(localConfig.content?.filmStripImages || []).length})</span>
                   </button>
 
                   <button
@@ -880,7 +698,7 @@ const AdminDashboard = () => {
                     style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.1rem', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600 }}
                   >
                     <Package size={15} />
-                    <span>Ứng Dụng Tin Dùng ({(localConfig.apps || []).length})</span>
+                    <span>Ecosystem Apps ({(localConfig.apps || []).length})</span>
                   </button>
 
                   <button
@@ -890,19 +708,19 @@ const AdminDashboard = () => {
                     style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.1rem', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600 }}
                   >
                     <MessageSquare size={15} />
-                    <span>Danh Ngôn Trang Chủ ({(localConfig.content?.quotes || []).length})</span>
+                    <span>Homepage Quotes ({(localConfig.content?.quotes || []).length})</span>
                   </button>
                 </div>
 
-                {/* SubTab 1: Dải Phim Kỹ Thuật Số */}
+                {/* SubTab 1: Filmstrip */}
                 {homepageSubTab === 'filmstrip' && (
                   <div className="admin-card">
                     <div className="config-section-title">
-                      <Film size={18} /> CẤU HÌNH DẢI PHIM KỸ THUẬT SỐ
+                      <Film size={18} /> DIGITAL FILMSTRIP CONFIGURATION
                     </div>
 
                     <div className="form-group">
-                      <label>Tốc Độ Cuộn Phim (Giây)</label>
+                      <label>Scroll Duration (Seconds)</label>
                       <input
                         type="number"
                         className="admin-input"
@@ -913,10 +731,10 @@ const AdminDashboard = () => {
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '2rem 0 1rem 0', flexWrap: 'wrap', gap: '1rem' }}>
                       <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--apple-text-secondary)' }}>
-                        DANH SÁCH KHUNG HÌNH ({(localConfig.content?.filmStripImages || []).length})
+                        FILM FRAMES LIST ({(localConfig.content?.filmStripImages || []).length})
                       </label>
                       <label className="add-btn" style={{ cursor: 'pointer' }}>
-                        <Upload size={15} /> Thêm Khung Hình
+                        <Upload size={15} /> Add Frame
                         <input
                           type="file"
                           accept="image/*"
@@ -946,7 +764,7 @@ const AdminDashboard = () => {
                                 updateNested('content', 'filmStripImages', currentImages);
                               }, 16 / 9)}
                             >
-                              <Crop size={13} /> Sửa
+                              <Crop size={13} /> Edit
                             </button>
                             <button
                               className="delete-btn"
@@ -964,16 +782,16 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
-                {/* SubTab 2: Ứng Dụng Tin Dùng */}
+                {/* SubTab 2: Ecosystem Apps */}
                 {homepageSubTab === 'apps' && (
                   <div className="admin-card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                       <div>
                         <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
-                          <Package size={18} /> HỆ SINH THÁI ỨNG DỤNG TIN DÙNG ({(localConfig.apps || []).length})
+                          <Package size={18} /> ECOSYSTEM APPLICATIONS ({(localConfig.apps || []).length})
                         </div>
                         <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
-                          Chọn logo thương hiệu chính hãng hoặc tải logo riêng, logo sẽ tự động mang màu sắc chuẩn.
+                          Choose official brand presets or upload custom brand logos.
                         </p>
                       </div>
                       <button className="add-btn" onClick={() => {
@@ -981,7 +799,7 @@ const AdminDashboard = () => {
                         newApps.push({ name: '', color: '#0071e3', iconUrl: '' });
                         setLocalConfig(prev => ({ ...prev, apps: newApps }));
                       }}>
-                        <Plus size={15} /> Thêm Ứng Dụng
+                        <Plus size={15} /> Add Application
                       </button>
                     </div>
 
@@ -993,7 +811,7 @@ const AdminDashboard = () => {
                               type="button"
                               className="social-logo-trigger"
                               onClick={() => setActiveAppLogoPickerIdx(activeAppLogoPickerIdx === idx ? null : idx)}
-                              title="Bấm để đổi Logo thương hiệu hoặc tải ảnh lên"
+                              title="Click to select preset logo or upload custom image"
                             >
                               {renderAppLogo(app)}
                             </button>
@@ -1001,7 +819,7 @@ const AdminDashboard = () => {
                             {activeAppLogoPickerIdx === idx && (
                               <div className="social-picker-dropdown">
                                 <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.6rem' }}>
-                                  CHỌN LOGO THƯƠNG HIỆU CÓ SẴN
+                                  SELECT BRAND PRESET
                                 </div>
                                 <div className="social-picker-grid">
                                   {APP_PRESET_LOGOS.map((preset) => (
@@ -1033,7 +851,7 @@ const AdminDashboard = () => {
                                 <div style={{ borderTop: '1px solid var(--apple-border)', paddingTop: '0.65rem', marginTop: '0.5rem' }}>
                                   <label className="btn-ghost" style={{ width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.5rem' }}>
                                     <Upload size={14} />
-                                    <span>Tải Logo Riêng Từ Máy</span>
+                                    <span>Upload Custom Logo</span>
                                     <input
                                       type="file"
                                       accept="image/*"
@@ -1051,30 +869,14 @@ const AdminDashboard = () => {
                             )}
                           </div>
 
-                          {app.iconUrl && (
-                            <button
-                              type="button"
-                              className="btn-ghost"
-                              style={{ padding: '0.45rem', width: '36px', height: '36px', minHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                              onClick={() => handleReAdjust(app.iconUrl, (res) => {
-                                const newApps = [...(localConfig.apps || [])];
-                                newApps[idx] = { ...newApps[idx], iconUrl: res };
-                                setLocalConfig(prev => ({ ...prev, apps: newApps }));
-                              }, 1)}
-                              title="Căn chỉnh icon"
-                            >
-                              <Crop size={14} />
-                            </button>
-                          )}
-
                           <input
                             type="text"
                             className="admin-input"
-                            placeholder="Tên ứng dụng (vd: Antigravity, GitHub, VS Code...)"
-                            value={app.name || ''}
                             style={{ flex: 1 }}
+                            placeholder="Application Name (e.g. Antigravity, Github)..."
+                            value={app.name || ''}
                             onChange={(e) => {
-                              const newApps = [...(localConfig.apps || [])];
+                              const newApps = [...localConfig.apps];
                               newApps[idx] = { ...newApps[idx], name: e.target.value };
                               setLocalConfig(prev => ({ ...prev, apps: newApps }));
                             }}
@@ -1084,12 +886,11 @@ const AdminDashboard = () => {
                             type="button"
                             className="delete-btn"
                             onClick={() => {
-                              const newApps = (localConfig.apps || []).filter((_, i) => i !== idx);
+                              const newApps = localConfig.apps.filter((_, i) => i !== idx);
                               setLocalConfig(prev => ({ ...prev, apps: newApps }));
                             }}
-                            aria-label={`Xóa ứng dụng ${app.name || ''}`}
                           >
-                            <Trash2 size={15} />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       ))}
@@ -1097,52 +898,46 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
-                {/* SubTab 3: Danh Ngôn Trang Chủ */}
+                {/* SubTab 3: Quotes */}
                 {homepageSubTab === 'quotes' && (
                   <div className="admin-card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                      <div>
-                        <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
-                          <MessageSquare size={18} /> QUẢN LÝ DANH NGÔN TRANG CHỦ ({(localConfig.content?.quotes || []).length})
-                        </div>
-                        <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
-                          Các câu trích dẫn sẽ hiển thị tự động trên thanh tiêu đề và chân trang web.
-                        </p>
+                      <div className="config-section-title" style={{ margin: 0 }}>
+                        <MessageSquare size={18} /> HOMEPAGE INSPIRATIONAL QUOTES ({(localConfig.content?.quotes || []).length})
                       </div>
                       <button className="add-btn" onClick={() => {
-                        const newQuotes = [...(localConfig.content?.quotes || [])];
-                        newQuotes.push('Danh ngôn mới...');
-                        updateNested('content', 'quotes', newQuotes);
+                        const quotes = [...(localConfig.content?.quotes || [])];
+                        quotes.push('');
+                        updateNested('content', 'quotes', quotes);
                       }}>
-                        <Plus size={15} /> Thêm Danh Ngôn
+                        <Plus size={15} /> Add Quote
                       </button>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       {(localConfig.content?.quotes || []).map((quote, idx) => (
-                        <div key={idx} className="quote-item-card">
-                          <span className="quote-index">{String(idx + 1).padStart(2, '0')}</span>
-                          <textarea
-                            className="quote-edit-input"
+                        <div key={idx} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            className="admin-input"
+                            style={{ flex: 1 }}
+                            placeholder="Enter quote and author..."
                             value={quote}
                             onChange={(e) => {
-                              const newQuotes = [...(localConfig.content?.quotes || [])];
-                              newQuotes[idx] = e.target.value;
-                              updateNested('content', 'quotes', newQuotes);
+                              const quotes = [...localConfig.content.quotes];
+                              quotes[idx] = e.target.value;
+                              updateNested('content', 'quotes', quotes);
                             }}
-                            rows={2}
-                            aria-label={`Danh ngôn số ${idx + 1}`}
                           />
                           <button
                             type="button"
                             className="delete-btn"
                             onClick={() => {
-                              const newQuotes = (localConfig.content?.quotes || []).filter((_, i) => i !== idx);
-                              updateNested('content', 'quotes', newQuotes);
+                              const quotes = localConfig.content.quotes.filter((_, i) => i !== idx);
+                              updateNested('content', 'quotes', quotes);
                             }}
-                            aria-label={`Xóa danh ngôn số ${idx + 1}`}
                           >
-                            <Trash2 size={15} />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       ))}
@@ -1152,183 +947,201 @@ const AdminDashboard = () => {
               </motion.div>
             )}
 
-            {/* TAB 3: BÀI VIẾT & BLOG */}
-            {activeTab === 'blog' && (
-              <motion.div key="blog" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+            {/* TAB 3: SOCIAL LINKS */}
+            {activeTab === 'socials' && (
+              <motion.div key="socials" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                 <div className="admin-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div className="config-section-title" style={{ margin: 0 }}>
-                      <FileText size={18} /> QUẢN LÝ BÀI VIẾT & BLOG ({blogPosts.length})
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                      <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
+                        <Globe size={18} /> SOCIAL PLATFORMS & LINKS ({(localConfig.social_links || []).length})
+                      </div>
+                      <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
+                        Select preset brand icons or upload custom icons, then enter destination URL.
+                      </p>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <Link to="/admin/cms/new" className="add-btn" style={{ textDecoration: 'none' }}>
-                        <Plus size={15} /> Viết Bài Mới
-                      </Link>
-                      <button className="btn-ghost" onClick={fetchBlogPosts}>
-                        <Activity size={15} /> Làm Mới
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="users-table-container">
-                    <table className="users-table">
-                      <thead>
-                        <tr>
-                          <th>BÀI VIẾT</th>
-                          <th>DANH MỤC</th>
-                          <th>NGÀY ĐĂNG</th>
-                          <th style={{ textAlign: 'right' }}>THAO TÁC</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {blogPosts.map(post => (
-                          <tr key={post.id}>
-                            <td>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <img src={post.thumbnail || '/placeholder.png'} style={{ width: '42px', height: '42px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--apple-border)' }} alt={post.title || 'Thumbnail'} />
-                                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{post.title}</div>
-                              </div>
-                            </td>
-                            <td>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: post.published ? 'var(--apple-green)' : '#f59e0b', background: post.published ? 'var(--apple-green-subtle)' : 'rgba(245, 158, 11, 0.1)', padding: '3px 8px', borderRadius: '980px' }}>
-                                {post.category || 'Tech'} · {post.published ? 'Công Khai' : 'Bản Nháp'}
-                              </span>
-                            </td>
-                            <td style={{ fontSize: '0.82rem', color: 'var(--apple-text-secondary)' }}>{post.date}</td>
-                            <td>
-                              <div className="action-btns" style={{ justifyContent: 'flex-end' }}>
-                                <Link to={`/admin/cms/${post.id}`} className="edit-btn" aria-label={`Sửa ${post.title}`}><Edit size={15} /></Link>
-                                <button className="delete-btn" onClick={() => deleteBlogPost(post.id)} aria-label={`Xóa ${post.title}`}><Trash2 size={15} /></button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* TAB 4: DỰ ÁN & PHẦN MỀM */}
-            {activeTab === 'projects' && (
-              <motion.div key="projects" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                <div className="admin-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div className="config-section-title" style={{ margin: 0 }}>
-                      <Package size={18} /> QUẢN LÝ DỰ ÁN & PHẦN MỀM ({projectsList.length})
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <Link to="/admin/projects/new" className="add-btn" style={{ textDecoration: 'none' }}>
-                        <Plus size={15} /> Soạn Dự Án Mới
-                      </Link>
-                      <button className="btn-ghost" onClick={fetchProjects}>
-                        <Activity size={15} /> Làm Mới
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="users-table-container">
-                    <table className="users-table">
-                      <thead>
-                        <tr>
-                          <th style={{ width: '70px', textAlign: 'center' }}>STT</th>
-                          <th>DỰ ÁN</th>
-                          <th>CÔNG NGHỆ</th>
-                          <th style={{ textAlign: 'right' }}>THAO TÁC</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {projectsList.map((proj, idx) => (
-                          <tr key={proj.id}>
-                            <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--apple-blue)', fontSize: '0.95rem' }}>
-                              {proj.order !== undefined && proj.order !== null && proj.order !== '' ? proj.order : (idx + 1)}
-                            </td>
-                            <td>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <img
-                                  src={proj.thumbnail || proj.coverImage || proj.image || '/logobct.png'}
-                                  style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover', border: '1px solid var(--apple-border)' }}
-                                  alt={proj.title || 'Project thumbnail'}
-                                  onError={(e) => { e.target.src = '/logobct.png'; }}
-                                />
-                                <div>
-                                  <div style={{ fontWeight: 600, fontSize: '0.92rem' }}>{proj.title}</div>
-                                  <div style={{ fontSize: '0.78rem', color: 'var(--apple-text-secondary)' }}>{proj.category}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td>
-                              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                                {(Array.isArray(proj.tags) ? proj.tags : []).map((t, i) => (
-                                  <span key={i} className="path-chip">{t}</span>
-                                ))}
-                              </div>
-                            </td>
-                            <td>
-                              <div className="action-btns" style={{ justifyContent: 'flex-end' }}>
-                                <Link to={`/admin/projects/edit/${proj.id}`} className="edit-btn" aria-label={`Sửa ${proj.title}`}><Edit size={15} /></Link>
-                                <button className="delete-btn" onClick={() => deleteProjectRecord(proj.id)} aria-label={`Xóa ${proj.title}`}><Trash2 size={15} /></button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* TAB 5: QUẢN LÝ TÀI KHOẢN */}
-            {activeTab === 'users' && (
-              <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                <div className="admin-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div className="config-section-title" style={{ margin: 0 }}>
-                      <Users size={18} /> QUẢN LÝ TÀI KHOẢN ({usersList.length})
-                    </div>
-                    <button className="add-btn" onClick={() => setUserModal({ isOpen: true, mode: 'add', data: { role: 'user' } })}>
-                      <Plus size={15} /> Thêm Tài Khoản
+                    <button className="add-btn" onClick={() => {
+                      const newSocials = [...(localConfig.social_links || [])];
+                      newSocials.push({ name: 'Website', icon: 'Globe', url: 'https://', color: '#0071e3', isVisible: true });
+                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                    }}>
+                      <Plus size={15} /> Add Social Link
                     </button>
                   </div>
 
-                  <div className="users-table-container">
-                    <table className="users-table">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                    {(localConfig.social_links || []).map((social, idx) => (
+                      <div key={idx} className="social-compact-row">
+                        <div style={{ position: 'relative' }}>
+                          <button
+                            type="button"
+                            className="social-logo-trigger"
+                            onClick={() => setActiveSocialPickerIdx(activeSocialPickerIdx === idx ? null : idx)}
+                            title="Click to select preset icon or upload custom image"
+                          >
+                            <SocialIcon icon={social.icon} iconUrl={social.iconUrl} size={18} color={social.color} />
+                          </button>
+
+                          {activeSocialPickerIdx === idx && (
+                            <div className="social-picker-dropdown">
+                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.6rem' }}>
+                                SELECT PRESET BRAND
+                              </div>
+                              <div className="social-picker-grid">
+                                {SOCIAL_PLATFORMS.map((platform) => (
+                                  <button
+                                    key={platform.name}
+                                    type="button"
+                                    className="social-preset-btn"
+                                    onClick={() => {
+                                      const newSocials = [...localConfig.social_links];
+                                      newSocials[idx] = {
+                                        ...newSocials[idx],
+                                        name: platform.name,
+                                        icon: platform.icon,
+                                        color: platform.color,
+                                        iconUrl: ''
+                                      };
+                                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                                      setActiveSocialPickerIdx(null);
+                                    }}
+                                  >
+                                    <SocialIcon icon={platform.icon} size={18} color={platform.color} />
+                                    <span>{platform.name}</span>
+                                  </button>
+                                ))}
+                              </div>
+
+                              <div style={{ borderTop: '1px solid var(--apple-border)', paddingTop: '0.65rem', marginTop: '0.5rem' }}>
+                                <label className="btn-ghost" style={{ width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.5rem' }}>
+                                  <Upload size={14} />
+                                  <span>Upload Custom Icon</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
+                                    onChange={(e) => handleFileUpload(e, (res) => {
+                                      const newSocials = [...localConfig.social_links];
+                                      newSocials[idx] = { ...newSocials[idx], iconUrl: res, icon: '' };
+                                      setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                                      setActiveSocialPickerIdx(null);
+                                    }, 1)}
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <input
+                          type="url"
+                          className="admin-input"
+                          style={{ flex: 1 }}
+                          placeholder="https://..."
+                          value={social.url || ''}
+                          onChange={(e) => {
+                            const newSocials = [...localConfig.social_links];
+                            newSocials[idx] = { ...newSocials[idx], url: e.target.value };
+                            setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                          }}
+                        />
+
+                        <button
+                          type="button"
+                          className="delete-btn"
+                          onClick={() => {
+                            const newSocials = localConfig.social_links.filter((_, i) => i !== idx);
+                            setLocalConfig(prev => ({ ...prev, social_links: newSocials }));
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* TAB 4: PROJECTS & SOFTWARE */}
+            {activeTab === 'projects' && (
+              <motion.div key="projects" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <div className="admin-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                      <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
+                        <Package size={18} /> PROJECTS & SOFTWARE REPOSITORY ({projectsList.length})
+                      </div>
+                      <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
+                        Create, publish, and edit interactive case studies and tools.
+                      </p>
+                    </div>
+                    <Link to="/admin/projects/new" className="add-btn" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <Plus size={15} /> New Project
+                    </Link>
+                  </div>
+
+                  <div className="admin-table-container">
+                    <table className="admin-table">
                       <thead>
                         <tr>
-                          <th>DANH TÍNH</th>
-                          <th>EMAIL</th>
-                          <th>VAI TRÒ</th>
-                          <th style={{ textAlign: 'right' }}>THAO TÁC</th>
+                          <th style={{ width: '60px', textAlign: 'center' }}>NO.</th>
+                          <th>PROJECT</th>
+                          <th>TECH STACK</th>
+                          <th style={{ width: '130px', textAlign: 'right' }}>ACTIONS</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {usersList.map(user => (
-                          <tr key={user.id}>
-                            <td>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                                <img src={user.photoURL || '/logobct.png'} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid var(--apple-border)' }} alt={user.displayName} />
-                                <div>
-                                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{user.displayName}</div>
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--apple-blue)' }}>@{user.username}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td style={{ fontSize: '0.85rem' }}>{user.email}</td>
-                            <td>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '3px 8px', borderRadius: '980px', background: user.role === 'admin' ? 'var(--apple-blue-subtle)' : 'rgba(0,0,0,0.05)', color: user.role === 'admin' ? 'var(--apple-blue)' : 'var(--apple-text-secondary)' }}>
-                                {user.role === 'admin' ? 'Admin' : 'Thành Viên'}
-                              </span>
-                            </td>
-                            <td>
-                              <div className="action-btns" style={{ justifyContent: 'flex-end' }}>
-                                <button className="edit-btn" onClick={() => setUserModal({ isOpen: true, mode: 'edit', data: user })}><Edit size={15} /></button>
-                                <button className="delete-btn" onClick={() => deleteUserRecord(user.id)}><Trash2 size={15} /></button>
-                              </div>
+                        {projectsList.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: 'var(--apple-text-secondary)' }}>
+                              No projects found. Click '+ New Project' to create your first case study.
                             </td>
                           </tr>
-                        ))}
+                        ) : (
+                          projectsList.map((proj, idx) => (
+                            <tr key={proj.id}>
+                              <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--apple-text-muted)', fontSize: '0.85rem' }}>
+                                #{idx + 1}
+                              </td>
+                              <td>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                  <div style={{ width: '56px', height: '40px', borderRadius: '8px', overflow: 'hidden', background: '#f5f5f7', border: '1px solid var(--apple-border)', flexShrink: 0 }}>
+                                    <img
+                                      src={proj.thumbnail || proj.coverImage || proj.image || '/logobct.png'}
+                                      alt={proj.title}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                      onError={(e) => { e.currentTarget.src = '/logobct.png'; }}
+                                    />
+                                  </div>
+                                  <div>
+                                    <div style={{ fontWeight: 600, color: 'var(--apple-text-primary)' }}>{proj.title}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)' }}>{proj.category || 'Tool'} · {proj.version || 'v1.0.0'}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                  {(Array.isArray(proj.tags) ? proj.tags : (proj.tech || [])).slice(0, 3).map((t, i) => (
+                                    <span key={i} style={{ fontSize: '0.7rem', padding: '2px 8px', background: 'rgba(0,0,0,0.04)', borderRadius: '4px', color: 'var(--apple-text-secondary)', border: '1px solid var(--apple-border)' }}>
+                                      {t}
+                                    </span>
+                                  ))}
+                                </div>
+                              </td>
+                              <td style={{ textAlign: 'right' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                  <Link to={`/admin/projects/edit/${proj.id}`} className="btn-ghost" style={{ padding: '0.4rem 0.7rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                    <Edit size={14} /> Edit
+                                  </Link>
+                                  <button className="delete-btn" onClick={() => deleteProjectRecord(proj.id)}>
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -1336,7 +1149,81 @@ const AdminDashboard = () => {
               </motion.div>
             )}
 
-            {/* TAB 6: THỐNG KÊ TRAFFIC */}
+            {/* TAB 5: BLOG ARTICLES */}
+            {activeTab === 'blog' && (
+              <motion.div key="blog" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <div className="admin-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                      <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
+                        <FileText size={18} /> BLOG & INSIGHTS MANAGER ({blogPosts.length})
+                      </div>
+                      <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
+                        Write and publish articles with rich Markdown styling.
+                      </p>
+                    </div>
+                    <Link to="/admin/cms/new" className="add-btn" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <Plus size={15} /> New Article
+                    </Link>
+                  </div>
+
+                  <div className="admin-table-container">
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '60px', textAlign: 'center' }}>NO.</th>
+                          <th>ARTICLE</th>
+                          <th>CATEGORY</th>
+                          <th>DATE</th>
+                          <th style={{ width: '130px', textAlign: 'right' }}>ACTIONS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {blogPosts.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: 'var(--apple-text-secondary)' }}>
+                              No blog posts found. Click '+ New Article' to create one.
+                            </td>
+                          </tr>
+                        ) : (
+                          blogPosts.map((post, idx) => (
+                            <tr key={post.id}>
+                              <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--apple-text-muted)', fontSize: '0.85rem' }}>
+                                #{idx + 1}
+                              </td>
+                              <td>
+                                <div style={{ fontWeight: 600, color: 'var(--apple-text-primary)' }}>{post.title}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)' }}>{post.slug || post.id}</div>
+                              </td>
+                              <td>
+                                <span style={{ fontSize: '0.75rem', padding: '3px 8px', background: 'rgba(0,113,227,0.08)', color: 'var(--apple-blue)', borderRadius: '6px', fontWeight: 600 }}>
+                                  {post.category || 'Tech'}
+                                </span>
+                              </td>
+                              <td style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>
+                                {post.createdAt?.toDate ? post.createdAt.toDate().toLocaleDateString() : 'Recent'}
+                              </td>
+                              <td style={{ textAlign: 'right' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                  <Link to={`/admin/cms/${post.id}`} className="btn-ghost" style={{ padding: '0.4rem 0.7rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                    <Edit size={14} /> Edit
+                                  </Link>
+                                  <button className="delete-btn" onClick={() => deleteBlogPost(post.id)}>
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* TAB 6: TRAFFIC ANALYTICS */}
             {activeTab === 'analytics' && (
               <motion.div key="analytics" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                 {/* Metric Summary Cards */}
@@ -1344,22 +1231,24 @@ const AdminDashboard = () => {
                   <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
                     <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }} />
-                      LƯỢT TRUY CẬP HIỆN TẠI
+                      ACTIVE NOW
                     </div>
                     <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#10b981', letterSpacing: '-0.03em' }}>{activeNowCount}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Hoạt động trong 5 phút gần đây</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Active in last 5 minutes</div>
                   </div>
 
                   <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>TỔNG LƯỢT TRUY CẬP</div>
-                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--apple-text-primary)', letterSpacing: '-0.03em' }}>{analyticsData.length}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Tổng số sự kiện xem trang</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>TOTAL LIFETIME VISITS</div>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--apple-text-primary)', letterSpacing: '-0.03em' }}>
+                      {totalLifetimeHits > 0 ? totalLifetimeHits.toLocaleString() : analyticsData.length}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Total recorded page views</div>
                   </div>
 
                   <div className="admin-card" style={{ marginBottom: 0, padding: '1.5rem' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>THIẾT BỊ DUY NHẤT</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--apple-text-secondary)', marginBottom: '0.5rem' }}>UNIQUE VISITORS</div>
                     <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--apple-blue)', letterSpacing: '-0.03em' }}>{groupedVisitors.length}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Gom nhóm theo người dùng/phiên</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginTop: '0.35rem' }}>Grouped by client visitor session</div>
                   </div>
                 </div>
 
@@ -1368,10 +1257,10 @@ const AdminDashboard = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                     <div>
                       <div className="config-section-title" style={{ margin: '0 0 0.35rem 0' }}>
-                        <Activity size={18} /> NHẬT KÝ LƯU LƯỢNG TRUY CẬP REALTIME
+                        <Activity size={18} /> REAL-TIME TRAFFIC LOGS
                       </div>
                       <p style={{ margin: 0, color: 'var(--apple-text-secondary)', fontSize: '0.85rem' }}>
-                        Tự động cập nhật thời gian thực khi có người dùng truy cập.
+                        Automatically updates in real time as visitors navigate the site.
                       </p>
                     </div>
 
@@ -1381,116 +1270,145 @@ const AdminDashboard = () => {
                           className={`filter-pill ${analyticsFilter === 'all' ? 'active' : ''}`}
                           onClick={() => { setAnalyticsFilter('all'); setTrafficPage(1); }}
                         >
-                          Tất cả ({groupedVisitors.length})
+                          All ({groupedVisitors.length})
                         </button>
                         <button
                           className={`filter-pill ${analyticsFilter === 'desktop' ? 'active' : ''}`}
                           onClick={() => { setAnalyticsFilter('desktop'); setTrafficPage(1); }}
                         >
-                          Desktop 💻 ({groupedVisitors.filter(v => !v.isMobile).length})
+                          Desktop ({groupedVisitors.filter(v => !v.isMobile).length})
                         </button>
                         <button
                           className={`filter-pill ${analyticsFilter === 'mobile' ? 'active' : ''}`}
                           onClick={() => { setAnalyticsFilter('mobile'); setTrafficPage(1); }}
                         >
-                          Mobile 📱 ({groupedVisitors.filter(v => v.isMobile).length})
+                          Mobile ({groupedVisitors.filter(v => v.isMobile).length})
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  {(() => {
-                    const totalTrafficPages = Math.max(1, Math.ceil(filteredVisitors.length / TRAFFIC_PER_PAGE));
-                    const paginatedVisitors = filteredVisitors.slice((trafficPage - 1) * TRAFFIC_PER_PAGE, trafficPage * TRAFFIC_PER_PAGE);
+                  <div className="admin-table-container">
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '80px' }}>STATUS</th>
+                          <th>VISITOR / IP</th>
+                          <th>DEVICE & OS</th>
+                          <th>LOCATION</th>
+                          <th style={{ width: '80px', textAlign: 'center' }}>HITS</th>
+                          <th>LAST ACTIVE</th>
+                          <th>VISITED PATHS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredVisitors.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--apple-text-secondary)' }}>
+                              No traffic recorded yet.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredVisitors.slice((trafficPage - 1) * 20, trafficPage * 20).map((visitor) => {
+                            const nowSec = Math.floor(Date.now() / 1000);
+                            const lastSec = visitor.lastTimestamp?.seconds || (visitor.lastTimestamp ? Math.floor(new Date(visitor.lastTimestamp).getTime() / 1000) : 0);
+                            const isOnline = (nowSec - lastSec) <= 300;
 
-                    return (
-                      <>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                          {paginatedVisitors.map((v, i) => (
-                            <div key={v.visitorId || i} className="visitor-row-card">
-                              <div className="visitor-header">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
-                                  {v.isAdmin ? (
-                                    <span className="visitor-badge-admin">Admin</span>
-                                  ) : (
-                                    <span className="visitor-badge-guest">Khách #{String(v.visitorId || 'guest').slice(-6).toUpperCase()}</span>
-                                  )}
-                                  <span style={{ fontSize: '0.85rem', color: 'var(--apple-text-secondary)' }}>
-                                    {v.deviceLabel}
+                            return (
+                              <tr key={visitor.visitorId}>
+                                <td>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 600, color: isOnline ? '#10b981' : 'var(--apple-text-muted)' }}>
+                                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: isOnline ? '#10b981' : '#94a3b8', display: 'inline-block' }} />
+                                    {isOnline ? 'ONLINE' : 'OFFLINE'}
                                   </span>
-                                  {(v.city || v.country) && (
-                                    <span style={{ fontSize: '0.78rem', color: 'var(--apple-green)', background: 'var(--apple-green-subtle)', padding: '2px 8px', borderRadius: '980px', fontWeight: 600 }}>
-                                      📍 {[v.city, v.country].filter(Boolean).join(', ')} {v.countryCode === 'VN' ? '🇻🇳' : ''}
-                                    </span>
-                                  )}
-                                  {v.ip && (
-                                    <code style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', background: 'rgba(0,0,0,0.04)', padding: '2px 6px', borderRadius: '4px' }}>
-                                      🌐 {v.ip}
-                                    </code>
-                                  )}
-                                </div>
-
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                                  <span className="visitor-hits">{v.totalHits} lượt xem</span>
-                                  <span style={{ fontSize: '0.78rem', color: 'var(--apple-text-secondary)' }}>
-                                    {v.lastTimestamp?.toDate ? v.lastTimestamp.toDate().toLocaleString() : 'Vừa xong'}
+                                </td>
+                                <td>
+                                  <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--apple-text-primary)' }}>
+                                    {visitor.isAdmin ? '👑 Admin (Active)' : (visitor.ip || 'Anonymous Client')}
+                                  </div>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--apple-text-muted)' }}>{visitor.visitorId}</div>
+                                </td>
+                                <td>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>{visitor.deviceLabel}</span>
+                                </td>
+                                <td>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>
+                                    {visitor.city ? `${visitor.city}, ${visitor.country}` : (visitor.country || 'Global Internet')}
                                   </span>
-                                </div>
-                              </div>
-
-                              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.35rem' }}>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)', marginRight: '0.25rem' }}>Trang đã xem:</span>
-                                {Array.from(v.paths).map((p, pIdx) => (
-                                  <span key={pIdx} className="path-chip">{p}</span>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {totalTrafficPages > 1 && (
-                          <div className="apple-pagination-bar">
-                            <div className="pagination-info">
-                              Đang hiển thị {((trafficPage - 1) * TRAFFIC_PER_PAGE) + 1}–{Math.min(trafficPage * TRAFFIC_PER_PAGE, filteredVisitors.length)} trong tổng số {filteredVisitors.length} khách
-                            </div>
-                            <div className="pagination-controls">
-                              <button
-                                className="btn-ghost"
-                                style={{ padding: '0.35rem 0.85rem', fontSize: '0.78rem' }}
-                                disabled={trafficPage === 1}
-                                onClick={() => setTrafficPage(p => Math.max(1, p - 1))}
-                              >
-                                ‹ Trước
-                              </button>
-                              <div className="pagination-pills">
-                                {Array.from({ length: totalTrafficPages }).map((_, pIdx) => {
-                                  const pageNum = pIdx + 1;
-                                  return (
-                                    <button
-                                      key={pageNum}
-                                      className={`filter-pill ${trafficPage === pageNum ? 'active' : ''}`}
-                                      style={{ minWidth: '32px', padding: '0.35rem 0.5rem', textAlign: 'center' }}
-                                      onClick={() => setTrafficPage(pageNum)}
-                                    >
-                                      {pageNum}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                              <button
-                                className="btn-ghost"
-                                style={{ padding: '0.35rem 0.85rem', fontSize: '0.78rem' }}
-                                disabled={trafficPage === totalTrafficPages}
-                                onClick={() => setTrafficPage(p => Math.min(totalTrafficPages, p + 1))}
-                              >
-                                Sau ›
-                              </button>
-                            </div>
-                          </div>
+                                </td>
+                                <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--apple-blue)' }}>
+                                  {visitor.totalHits}
+                                </td>
+                                <td style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>
+                                  {visitor.lastTimestamp?.seconds ? new Date(visitor.lastTimestamp.seconds * 1000).toLocaleTimeString() : 'Just now'}
+                                </td>
+                                <td>
+                                  <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                                    {Array.from(visitor.paths).slice(0, 3).map((p, i) => (
+                                      <code key={i} style={{ fontSize: '0.7rem', padding: '1px 6px', background: 'rgba(0,0,0,0.04)', borderRadius: '4px' }}>
+                                        {p}
+                                      </code>
+                                    ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
                         )}
-                      </>
-                    );
-                  })()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* TAB 7: USERS */}
+            {activeTab === 'users' && (
+              <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <div className="admin-card">
+                  <div className="config-section-title">
+                    <Users size={18} /> USER DIRECTORY & ACCESS CONTROL ({usersList.length})
+                  </div>
+
+                  <div className="admin-table-container">
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>USER</th>
+                          <th>EMAIL</th>
+                          <th>ROLE</th>
+                          <th>JOINED DATE</th>
+                          <th style={{ width: '80px', textAlign: 'right' }}>ACTIONS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {usersList.map((user) => (
+                          <tr key={user.id}>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <img src={user.photoURL || '/logobct.png'} alt={user.displayName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                                <div style={{ fontWeight: 600, color: 'var(--apple-text-primary)' }}>{user.displayName || 'Unnamed User'}</div>
+                              </div>
+                            </td>
+                            <td style={{ color: 'var(--apple-text-secondary)' }}>{user.email}</td>
+                            <td>
+                              <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '6px', background: user.role === 'admin' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(0, 113, 227, 0.1)', color: user.role === 'admin' ? 'var(--apple-red)' : 'var(--apple-blue)', fontWeight: 600 }}>
+                                {user.role?.toUpperCase() || 'MEMBER'}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: '0.8rem', color: 'var(--apple-text-secondary)' }}>
+                              {user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              <button className="delete-btn" onClick={() => deleteUserRecord(user.id)}>
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -1498,209 +1416,71 @@ const AdminDashboard = () => {
         </div>
       </main>
 
-      {/* Image Crop Adjustment Modal */}
-      {adjustmentModal.isOpen && (
-        <div className="admin-modal-backdrop" onMouseUp={handleMouseUp} onTouchEnd={handleMouseUp}>
-          <div className="admin-modal-card" style={{ maxWidth: '560px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <div>
-                <div className="config-section-title" style={{ margin: 0 }}>CĂN CHỈNH KHUNG HÌNH</div>
-                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.78rem', color: 'var(--apple-text-secondary)' }}>
-                  Bấm giữ chuột để kéo di chuyển vị trí hoặc dùng thanh trượt để thu phóng.
-                </p>
+      {/* Image Cropper Modal */}
+      <AnimatePresence>
+        {cropperModal.isOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="cropper-backdrop">
+            <div className="cropper-dialog">
+              <div className="cropper-header">
+                <h3>ADJUST & CROP IMAGE</h3>
+                <button onClick={() => setCropperModal(prev => ({ ...prev, isOpen: false }))}>
+                  <X size={18} />
+                </button>
               </div>
-              <button className="btn-ghost" style={{ padding: '0.4rem' }} onClick={() => setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16 / 9 })}>
-                <X size={16} />
-              </button>
-            </div>
 
-            <div 
-              ref={previewContainerRef}
-              style={{ 
-                width: '100%', 
-                height: '280px', 
-                background: '#0a0a0c', 
-                borderRadius: '12px', 
-                border: '2px dashed var(--apple-blue)', 
-                overflow: 'hidden', 
-                position: 'relative',
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                marginBottom: '1.25rem',
-                cursor: isDragging ? 'grabbing' : 'grab',
-                userSelect: 'none'
-              }}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleMouseUp}
-            >
-              <img
-                src={adjustmentModal.src}
-                alt="Preview"
-                draggable={false}
-                style={{
-                  maxWidth: 'none',
-                  maxHeight: 'none',
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  transform: `scale(${zoom}) translate(${dragPos.x / zoom}px, ${dragPos.y / zoom}px)`,
-                  transition: isDragging ? 'none' : 'transform 0.05s ease-out',
-                  pointerEvents: 'none'
+              <div
+                className="cropper-viewport"
+                style={{ aspectRatio: cropperModal.aspectRatio }}
+                onMouseDown={(e) => {
+                  setIsDragging(true);
+                  setDragStart({ x: e.clientX - cropperModal.pan.x, y: e.clientY - cropperModal.pan.y });
                 }}
-              />
-              <div style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'rgba(0,0,0,0.65)', color: '#ffffff', padding: '3px 8px', borderRadius: '6px', fontSize: '0.7rem', pointerEvents: 'none' }}>
-                16 : 9 Khung chuẩn
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Thu Phóng</label>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--apple-blue)', fontWeight: 700 }}>{zoom.toFixed(1)}x</span>
-                </div>
-                <input 
-                  type="range" 
-                  min="0.5" 
-                  max="3.0" 
-                  step="0.05" 
-                  value={zoom} 
-                  onChange={(e) => setZoom(Number(e.target.value))} 
-                  style={{ width: '100%' }}
+                onMouseMove={(e) => {
+                  if (!isDragging) return;
+                  setCropperModal(prev => ({ ...prev, pan: { x: e.clientX - dragStart.x, y: e.clientY - dragStart.y } }));
+                }}
+                onMouseUp={() => setIsDragging(false)}
+                onMouseLeave={() => setIsDragging(false)}
+              >
+                <img
+                  src={cropperModal.imageSrc}
+                  alt="Crop Preview"
+                  style={{
+                    transform: `translate(${cropperModal.pan.x}px, ${cropperModal.pan.y}px) scale(${cropperModal.zoom})`,
+                    cursor: isDragging ? 'grabbing' : 'grab'
+                  }}
+                  draggable={false}
                 />
               </div>
-              <button 
-                type="button" 
-                className="btn-ghost" 
-                style={{ padding: '0.5rem 0.85rem', fontSize: '0.78rem', marginTop: '1rem' }}
-                onClick={() => { setDragPos({ x: 0, y: 0 }); setZoom(1); }}
-              >
-                Đặt Lại
-              </button>
-            </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-              <button className="btn-ghost" onClick={() => setAdjustmentModal({ isOpen: false, src: '', callback: null, aspect: 16 / 9 })}>Hủy</button>
-              <button className="save-btn" onClick={confirmCrop}>Áp Dụng</button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="cropper-controls">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--apple-text-secondary)' }}>Zoom:</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="0.05"
+                    value={cropperModal.zoom}
+                    onChange={(e) => setCropperModal(prev => ({ ...prev, zoom: Number(e.target.value) }))}
+                    style={{ flex: 1 }}
+                  />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{Math.round(cropperModal.zoom * 100)}%</span>
+                </div>
+              </div>
 
-      {/* Project Modal */}
-      {projectModal.isOpen && (
-        <div className="admin-modal-backdrop">
-          <div className="admin-modal-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <div className="config-section-title" style={{ margin: 0 }}>{projectModal.mode === 'add' ? 'THÊM DỰ ÁN MỚI' : 'CHỈNH SỬA DỰ ÁN'}</div>
-              <button className="btn-ghost" style={{ padding: '0.4rem' }} onClick={() => setProjectModal({ isOpen: false, mode: 'add', data: {} })}>
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="form-group">
-              <label>Tên Dự Án</label>
-              <input type="text" className="admin-input" value={projectModal.data.title || ''} onChange={e => setProjectModal(p => ({ ...p, data: { ...p.data, title: e.target.value } }))} />
-            </div>
-
-            <div className="form-group">
-              <label>Chuyên Mục</label>
-              <input type="text" className="admin-input" value={projectModal.data.category || ''} onChange={e => setProjectModal(p => ({ ...p, data: { ...p.data, category: e.target.value } }))} placeholder="Web App, AI Tool..." />
-            </div>
-
-            <div className="form-group">
-              <label>Thẻ Công Nghệ (Phân cách bằng dấu phẩy)</label>
-              <input type="text" className="admin-input" value={Array.isArray(projectModal.data.tags) ? projectModal.data.tags.join(', ') : (projectModal.data.tags || '')} onChange={e => setProjectModal(p => ({ ...p, data: { ...p.data, tags: e.target.value } }))} placeholder="React, Vite, Firebase..." />
-            </div>
-
-            <div className="form-group">
-              <label>Mô Tả Dự Án</label>
-              <textarea className="admin-textarea" value={projectModal.data.description || ''} onChange={e => setProjectModal(p => ({ ...p, data: { ...p.data, description: e.target.value } }))} />
-            </div>
-
-            <div className="form-group">
-              <label>Đường Dẫn Live Demo / Website (Demo URL)</label>
-              <input type="url" className="admin-input" placeholder="https://bctoiws0902.github.io/..." value={projectModal.data.demoUrl || ''} onChange={e => setProjectModal(p => ({ ...p, data: { ...p.data, demoUrl: e.target.value } }))} />
-            </div>
-
-            <div className="form-group">
-              <label>Đường Dẫn Mã Nguồn GitHub (GitHub URL)</label>
-              <input type="url" className="admin-input" placeholder="https://github.com/..." value={projectModal.data.githubUrl || ''} onChange={e => setProjectModal(p => ({ ...p, data: { ...p.data, githubUrl: e.target.value } }))} />
-            </div>
-
-            <div className="form-group">
-              <label>Ảnh Bìa Dự Án</label>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                {(projectModal.data.image || projectModal.data.thumbnail) && (
-                  <img src={projectModal.data.image || projectModal.data.thumbnail} alt="Preview" style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover' }} />
-                )}
-                <label className="btn-ghost" style={{ cursor: 'pointer' }}>
-                  <Upload size={14} /> Tải Ảnh
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileUpload(e, res => setProjectModal(p => ({ ...p, data: { ...p.data, image: res, thumbnail: res } })), 16 / 9)} />
-                </label>
+              <div className="cropper-actions">
+                <button className="btn-secondary" onClick={() => setCropperModal(prev => ({ ...prev, isOpen: false }))}>
+                  Cancel
+                </button>
+                <button className="btn-primary" onClick={handleCropSave}>
+                  Apply & Save Image
+                </button>
               </div>
             </div>
-
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-              <button className="btn-ghost" onClick={() => setProjectModal({ isOpen: false, mode: 'add', data: {} })}>Hủy</button>
-              <button className="save-btn" onClick={handleSaveProject}>Lưu Dự Án</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* User Modal */}
-      {userModal.isOpen && (
-        <div className="admin-modal-backdrop">
-          <div className="admin-modal-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <div className="config-section-title" style={{ margin: 0 }}>{userModal.mode === 'add' ? 'THÊM TÀI KHOẢN MỚI' : 'CHỈNH SỬA TÀI KHOẢN'}</div>
-              <button className="btn-ghost" style={{ padding: '0.4rem' }} onClick={() => setUserModal({ isOpen: false, mode: 'add', data: {} })}>
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="form-group">
-              <label>Tên Hiển Thị</label>
-              <input type="text" className="admin-input" value={userModal.data.displayName || ''} onChange={e => setUserModal(p => ({ ...p, data: { ...p.data, displayName: e.target.value } }))} />
-            </div>
-
-            <div className="form-group">
-              <label>Username</label>
-              <input type="text" className="admin-input" value={userModal.data.username || ''} onChange={e => setUserModal(p => ({ ...p, data: { ...p.data, username: e.target.value } }))} />
-            </div>
-
-            <div className="form-group">
-              <label>Email</label>
-              <input type="email" className="admin-input" value={userModal.data.email || ''} onChange={e => setUserModal(p => ({ ...p, data: { ...p.data, email: e.target.value } }))} />
-            </div>
-
-            <div className="form-group">
-              <label>Phân Quyền Vai Trò</label>
-              <select className="admin-select" value={userModal.data.role || 'user'} onChange={e => setUserModal(p => ({ ...p, data: { ...p.data, role: e.target.value } }))}>
-                <option value="user">Thành Viên (User)</option>
-                <option value="admin">Quản Trị Viên (Admin)</option>
-              </select>
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-              <button className="btn-ghost" onClick={() => setUserModal({ isOpen: false, mode: 'add', data: {} })}>Hủy</button>
-              <button className="save-btn" onClick={handleSaveUser}>Lưu Tài Khoản</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Floating Status Toast */}
-      <div className={`admin-floating-status ${status ? 'show' : ''}`}>
-        <span>{status}</span>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

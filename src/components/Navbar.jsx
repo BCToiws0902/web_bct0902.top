@@ -140,7 +140,7 @@ const Navbar = () => {
                       e.target.style.color = 'inherit';
                     }}
                   >
-                    {link === 'quiz' ? 'QUIZ MAKER' : link === 'showcase' ? t('nav.utilities') : t(`nav.${link}`)}
+                    {link === 'quiz' ? 'QUIZ MAKER' : t(`nav.${link}`)}
                   </Link>
                 ) : (
                   <a 
@@ -240,16 +240,16 @@ const Navbar = () => {
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       {isAdmin && (
                         <Link to="/admin" onClick={() => setDropdownOpen(false)} style={{ padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-main)', textDecoration: 'none', fontSize: '0.85rem', transition: 'background 0.2s', borderBottom: '1px solid rgba(255,255,255,0.05)' }} onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
-                           <Zap size={16} /> TRANG QUẢN TRỊ ADMIN
+                           <Zap size={16} /> {t('nav.admin', 'ADMIN DASHBOARD')}
                         </Link>
                       )}
                       {currentUser && (
                         <button onClick={() => { setShowSettingsModal(true); setDropdownOpen(false); }} style={{ padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem', cursor: 'pointer', transition: 'background 0.2s', textAlign: 'left' }} onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
-                          <Settings size={16} /> Cài đặt hồ sơ
+                          <Settings size={16} /> {t('nav.profile_settings', 'Profile Settings')}
                         </button>
                       )}
                       <button onClick={() => { setShowLogoutConfirm(true); setDropdownOpen(false); }} style={{ padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', background: 'transparent', border: 'none', fontSize: '0.85rem', cursor: 'pointer', transition: 'background 0.2s', textAlign: 'left' }} onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
-                        <LogOut size={16} /> Đăng xuất phiên
+                        <LogOut size={16} /> {t('nav.logout', 'Logout')}
                       </button>
                     </div>
                   </motion.div>
@@ -286,7 +286,7 @@ const Navbar = () => {
         </div>
       </motion.nav>
 
-      {}
+      {/* Logout Modal */}
       <AnimatePresence>
         {showLogoutConfirm && (
           <motion.div 
@@ -295,18 +295,18 @@ const Navbar = () => {
           >
             <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} style={{ background: '#111', padding: '2rem', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.4)', textAlign: 'center', maxWidth: '400px', width: '90%' }}>
                <LogOut size={48} color="#ef4444" style={{ marginBottom: '1rem' }} />
-               <h3 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '0.5rem' }}>Xác Nhận Đăng Xuất</h3>
-               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem' }}>Ngài có chắc chắn muốn ngắt kết nối khỏi hệ thống BCT0902 ngay bây giờ?</p>
+               <h3 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '0.5rem' }}>{t('nav.confirm_logout', 'Confirm Logout')}</h3>
+               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem' }}>{t('nav.logout_desc', 'Are you sure you want to disconnect from BCT0902 system?')}</p>
                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                 <button onClick={() => setShowLogoutConfirm(false)} style={{ padding: '0.8rem 1.5rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '8px', cursor: 'pointer' }}>ĐÓNG</button>
-                 <button onClick={executeLogout} style={{ padding: '0.8rem 1.5rem', background: '#ef4444', border: 'none', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>ĐĂNG XUẤT</button>
+                 <button onClick={() => setShowLogoutConfirm(false)} style={{ padding: '0.8rem 1.5rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '8px', cursor: 'pointer' }}>{t('common.close', 'CLOSE')}</button>
+                 <button onClick={executeLogout} style={{ padding: '0.8rem 1.5rem', background: '#ef4444', border: 'none', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>{t('nav.logout', 'LOGOUT')}</button>
                </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {}
+      {/* Settings Modal */}
       <AnimatePresence>
         {showSettingsModal && (
           <motion.div 
@@ -315,7 +315,7 @@ const Navbar = () => {
           >
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ background: '#111', padding: '2.5rem 2rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', maxWidth: '450px', width: '90%', position: 'relative' }}>
                <button onClick={() => setShowSettingsModal(false)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><X size={20}/></button>
-               <h3 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '1.5rem', fontFamily: 'var(--font-heading)' }}>CÀI ĐẶT HỒ SƠ</h3>
+               <h3 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '1.5rem', fontFamily: 'var(--font-heading)' }}>{t('nav.profile_settings', 'PROFILE SETTINGS')}</h3>
                
                <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
@@ -323,21 +323,20 @@ const Navbar = () => {
                   </div>
 
                   <div>
-                     <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>ĐƯỜNG DẪN ẢNH ĐẠI DIỆN</label>
-                     <input type="text" value={editAvatar} onChange={(e) => setEditAvatar(e.target.value)} placeholder="Nhập API URL hoặc link ảnh" style={{ width: '100%', padding: '0.8rem', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px' }} />
+                     <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t('nav.avatar_url', 'AVATAR URL')}</label>
+                     <input type="text" value={editAvatar} onChange={(e) => setEditAvatar(e.target.value)} placeholder="API URL or image link" style={{ width: '100%', padding: '0.8rem', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px' }} />
                   </div>
                   <div>
-                     <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>TÊN HIỂN THỊ (*)</label>
+                     <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t('nav.display_name', 'DISPLAY NAME (*)')}</label>
                      <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} required style={{ width: '100%', padding: '0.8rem', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px' }} />
                   </div>
                   <div>
-                     <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>EMAIL HỆ THỐNG</label>
+                     <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t('nav.system_email', 'SYSTEM EMAIL')}</label>
                      <input type="text" value={currentUser?.email || ''} disabled style={{ width: '100%', padding: '0.8rem', background: 'rgba(255,255,255,0.02)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '6px', cursor: 'not-allowed' }} />
-                     <small style={{ color: 'var(--accent-gold)', fontSize: '0.7rem', marginTop: '0.3rem', display: 'block' }}>* Email là định danh cố định. Muốn gắn tên miền mới vui lòng liên hệ Admin.</small>
                   </div>
 
                   <button type="submit" disabled={isSaving} style={{ width: '100%', padding: '1rem', background: 'var(--accent-main)', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', marginTop: '1rem', opacity: isSaving ? 0.7 : 1 }}>
-                     <Save size={18} /> {isSaving ? 'ĐANG LƯU...' : 'LƯU THAY ĐỔI'}
+                     <Save size={18} /> {isSaving ? t('common.saving', 'SAVING...') : t('common.save_changes', 'SAVE CHANGES')}
                   </button>
                </form>
             </motion.div>

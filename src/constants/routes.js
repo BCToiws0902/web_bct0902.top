@@ -1,32 +1,32 @@
 export const APP_ROUTES = [
   { 
     id: 'blog', 
-    name: 'Bài Viết & Blog', 
+    name: 'Blog & Articles', 
     path: '/blog', 
-    description: 'Trang tin tức và các bài viết chia sẻ chuyên môn' 
+    description: 'Technical insights, news, and development articles' 
   },
   { 
     id: 'chronicles', 
-    name: 'Ký Sự Công Nghệ', 
+    name: 'Tech Chronicles', 
     path: '/chronicles', 
-    description: 'Dòng thời gian nhật ký và sự kiện kỹ thuật' 
+    description: 'Timeline journey and milestone logs' 
   },
   { 
     id: 'showcase', 
-    name: 'Dự Án & Phần Mềm', 
+    name: 'Showcase & Tools', 
     path: '/showcase', 
-    description: 'Showcase danh mục sản phẩm và ứng dụng đã thực hiện' 
+    description: 'Interactive software showcases and case studies' 
   },
   { 
     id: 'shortener', 
-    name: 'Tiện Ích Rút Gọn Link', 
+    name: 'Link Shortener', 
     path: '/shortener', 
-    description: 'Công cụ rút gọn liên kết và chuyển hướng trang' 
+    description: 'URL shortening and redirect management' 
   },
   { 
     id: 'quiz', 
-    name: 'Trắc Nghiệm Trực Tuyến', 
+    name: 'Quiz Platform', 
     path: '/quiz-maker', 
-    description: 'Nền tảng tạo đề và làm bài kiểm tra trắc nghiệm' 
+    description: 'Online quiz maker and interactive tests' 
   }
 ];

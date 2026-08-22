@@ -520,10 +520,10 @@ const LinkShortener = () => {
                   <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                     <button onClick={() => copyToClipboard(shortUrl)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, justifyContent: 'center' }}>
                       {copied ? <Check size={18} /> : <Copy size={18} />}
-                      <span>{copied ? 'ĐÃ SAO CHÉP' : 'SAO CHÉP LINK'}</span>
+                      <span>{copied ? t('shortener.copied', 'COPIED') : t('shortener.copy_link', 'COPY LINK')}</span>
                     </button>
                     <button onClick={() => downloadQRCode('qr-gen', customSlug || 'short')} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, justifyContent: 'center' }}>
-                      <Download size={18} /> TẢI QR
+                      <Download size={18} /> {t('shortener.download_qr', 'DOWNLOAD QR')}
                     </button>
                     <a href={`//${shortUrl}`} target="_blank" rel="noreferrer" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'auto' }}>
                       <ExternalLink size={18} />
@@ -554,24 +554,24 @@ const LinkShortener = () => {
               <div className="popup-icon">
                 <Info size={40} className="text-glow" />
               </div>
-              <h2>THÔNG BÁO HỆ THỐNG</h2>
+              <h2>{t('shortener.sys_notification', 'SYSTEM NOTICE')}</h2>
               <div className="popup-content">
-                <p>Chào mừng ngài đến với trình rút gọn liên kết <strong>BCT IRIS</strong>.</p>
+                <p>{t('shortener.welcome_msg', 'Welcome to BCT IRIS Link Shortener.')}</p>
                 <ul>
-                  <li><strong>Tài khoản khách:</strong> Liên kết sẽ tự động hết hạn sau <strong>30 ngày</strong>.</li>
-                  <li><strong>Tài khoản thành viên:</strong> Lưu trữ <strong>vĩnh viễn</strong> và có quyền quản lý, chỉnh sửa liên kết.</li>
+                  <li><strong>{t('shortener.guest_rule', 'Guest Account: Links expire after 30 days.')}</strong></li>
+                  <li><strong>{t('shortener.member_rule', 'Member Account: Permanent storage and full control.')}</strong></li>
                 </ul>
-                <p className="highlight">Hãy đăng nhập để có quyền kiểm soát tối đa!</p>
+                <p className="highlight">{t('shortener.login_cta', 'Sign in for maximum control!')}</p>
               </div>
               <div className="popup-actions">
-                {!currentUser && <button onClick={() => window.location.href = '/login'} className="btn-primary">ĐĂNG NHẬP NGAY</button>}
-                <button onClick={() => setShowPopup(false)} className="btn-secondary">TÔI ĐÃ HIỂU</button>
+                {!currentUser && <button onClick={() => window.location.href = '/login'} className="btn-primary">{t('shortener.btn_login_now', 'SIGN IN NOW')}</button>}
+                <button onClick={() => setShowPopup(false)} className="btn-secondary">{t('shortener.btn_understood', 'I UNDERSTAND')}</button>
               </div>
             </motion.div>
           </motion.div>
         )}
 
-        { }
+        {/* Edit Popup */}
         {editingLink && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -585,11 +585,11 @@ const LinkShortener = () => {
               style={{ width: '100%', maxWidth: '450px', padding: '2.5rem' }}
             >
               <h3 style={{ fontFamily: 'var(--font-tech)', marginBottom: '1.5rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Edit3 size={20} /> CHỈNH SỬA LIÊN KẾT
+                <Edit3 size={20} /> {t('shortener.edit_title', 'EDIT LINK')}
               </h3>
               <form onSubmit={handleUpdate} className="edit-form">
                 <div className="edit-input-group">
-                  <label>ĐƯỜNG DẪN GỐC</label>
+                  <label>{t('shortener.original_url', 'ORIGINAL DESTINATION URL')}</label>
                   <input
                     type="text"
                     value={editForm.longUrl}
@@ -597,24 +597,24 @@ const LinkShortener = () => {
                   />
                 </div>
                 <div className="edit-input-group">
-                  <label>MÃ ĐỊNH DANH (SLUG)</label>
+                  <label>{t('shortener.slug_label', 'CUSTOM SLUG')}</label>
                   <input
                     type="text"
                     value={editForm.slug}
                     onChange={(e) => setEditForm({ ...editForm, slug: e.target.value })}
                   />
-                  <small>* Thay đổi slug sẽ làm link cũ không hoạt động.</small>
+                  <small>{t('shortener.slug_warning', '* Changing the slug will break the old URL.')}</small>
                 </div>
                 <div className="edit-actions">
-                  <button type="button" onClick={() => setEditingLink(null)} className="btn-secondary">HỦY</button>
-                  <button type="submit" className="btn-primary"><Save size={16} /> LƯU THAY ĐỔI</button>
+                  <button type="button" onClick={() => setEditingLink(null)} className="btn-secondary">{t('shortener.cancel', 'CANCEL')}</button>
+                  <button type="submit" className="btn-primary"><Save size={16} /> {t('shortener.save_changes', 'SAVE CHANGES')}</button>
                 </div>
               </form>
             </motion.div>
           </motion.div>
         )}
 
-        { }
+        {/* QR Modal */}
         {qrModalLink && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -629,7 +629,7 @@ const LinkShortener = () => {
             >
               <button className="close-popup" onClick={() => setQrModalLink(null)} aria-label="Close modal"><X size={20} /></button>
               <h3 style={{ fontFamily: 'var(--font-tech)', marginBottom: '1.5rem', color: 'var(--accent-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                <QrCode size={24} /> MÃ QR CHI TIẾT
+                <QrCode size={24} /> {t('shortener.qr_details', 'QR CODE DETAILS')}
               </h3>
 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
@@ -662,7 +662,7 @@ const LinkShortener = () => {
                   className="btn-primary"
                   style={{ width: '100%', height: '50px', fontSize: '0.9rem' }}
                 >
-                  <Download size={18} style={{ marginRight: '0.5rem' }} /> TẢI QR CHẤT LƯỢNG CAO
+                  <Download size={18} style={{ marginRight: '0.5rem' }} /> {t('shortener.download_high_res_qr', 'DOWNLOAD HD QR')}
                 </button>
               </div>
             </motion.div>

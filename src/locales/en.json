@@ -14,7 +14,8 @@
     "blog": "Insights",
     "chronicles": "Chronicles",
     "shortener": "Shortener",
-    "back_home": "BACK TO HOME"
+    "back_home": "BACK TO HOME",
+    "showcase": "Showcase"
   },
   "hero": {
     "greeting": "HELLO _ // THIS IS",
@@ -133,12 +134,36 @@
   "chronicles": {
     "title": "< Personal_Chronicles />",
     "subtitle": "A chronological sequence of growth and professional development.",
-    "m1": { "year": "2006", "title": "Elementary School", "desc": "Studied at Tan Thanh 1 Primary School. The first steps in the educational journey." },
-    "m2": { "year": "2011", "title": "Middle School", "desc": "Attended Tan Thanh Secondary School. Began developing independent learning habits." },
-    "m3": { "year": "2015", "title": "High School", "desc": "Studied at Huynh Thuc Khang High School. A critical stage in preparing for the future." },
-    "m4": { "year": "2019", "title": "University", "desc": "Student at Lac Hong University. Where professional IT knowledge began to accumulate." },
-    "m5": { "year": "2023", "title": "Technician @ FPT", "desc": "Internship and employment at FPT Group. Gained technical experience in one of Vietnam's leading professional environments." },
-    "m6": { "year": "07/2023 - 01/2025", "title": "IT @ Chính Nam Biên Hòa", "desc": "Led IT initiatives at Chinh Nam Bien Hoa for 1 year and 7 months. Currently independent and available for new challenges." }
+    "m1": {
+      "year": "2006",
+      "title": "Elementary School",
+      "desc": "Studied at Tan Thanh 1 Primary School. The first steps in the educational journey."
+    },
+    "m2": {
+      "year": "2011",
+      "title": "Middle School",
+      "desc": "Attended Tan Thanh Secondary School. Began developing independent learning habits."
+    },
+    "m3": {
+      "year": "2015",
+      "title": "High School",
+      "desc": "Studied at Huynh Thuc Khang High School. A critical stage in preparing for the future."
+    },
+    "m4": {
+      "year": "2019",
+      "title": "University",
+      "desc": "Student at Lac Hong University. Where professional IT knowledge began to accumulate."
+    },
+    "m5": {
+      "year": "2023",
+      "title": "Technician @ FPT",
+      "desc": "Internship and employment at FPT Group. Gained technical experience in one of Vietnam's leading professional environments."
+    },
+    "m6": {
+      "year": "07/2023 - 01/2025",
+      "title": "IT @ Chính Nam Biên Hòa",
+      "desc": "Led IT initiatives at Chinh Nam Bien Hoa for 1 year and 7 months. Currently independent and available for new challenges."
+    }
   },
   "blog": {
     "title": "AI INSIGHTS",
@@ -160,7 +185,7 @@
     "hint": "Leave blank for auto-generated random slug.",
     "manage_title": "MANAGE LINKS",
     "login_prompt": "Please log in to manage and store your links permanently.",
-    "btn_login_now": "LOG IN NOW",
+    "btn_login_now": "SIGN IN NOW",
     "loading": "Loading data...",
     "empty": "No links created yet.",
     "status": "Status:",
@@ -170,12 +195,28 @@
     "result_title": "SHORTEN RESULT",
     "notice_title": "SYSTEM ANNOUNCEMENT",
     "notice_highlight": "Log in to get full administrative control!",
-    "edit_title": "EDIT LINK",
+    "edit_title": "EDIT SHORT LINK",
     "btn_cancel": "CANCEL",
     "btn_save": "SAVE CHANGES",
     "qr_title": "QR CODE DETAILS",
     "btn_download_qr": "DOWNLOAD QR",
-    "err_enter_url": "Please enter a valid original URL to shorten."
+    "err_enter_url": "Please enter a valid original URL to shorten.",
+    "copied": "COPIED",
+    "copy_link": "COPY LINK",
+    "download_qr": "DOWNLOAD QR",
+    "download_high_res_qr": "DOWNLOAD HD QR",
+    "sys_notification": "SYSTEM NOTICE",
+    "welcome_msg": "Welcome to BCT IRIS Link Shortener.",
+    "guest_rule": "Guest Account: Links expire automatically after 30 days.",
+    "member_rule": "Member Account: Permanent storage, edit, and analytics control.",
+    "login_cta": "Sign in for maximum control and analytics!",
+    "btn_understood": "I UNDERSTAND",
+    "original_url": "ORIGINAL DESTINATION URL",
+    "slug_label": "CUSTOM SLUG",
+    "slug_warning": "* Modifying the slug will cause the previous URL to stop working.",
+    "cancel": "CANCEL",
+    "save_changes": "SAVE CHANGES",
+    "qr_details": "QR CODE DETAILS"
   },
   "login": {
     "title_login": "PLEASE LOG IN TO CONTINUE",
@@ -193,7 +234,36 @@
     "error": "A system error occurred while processing your redirect request."
   },
   "common": {
-    "error": "An error occurred, please try again.",
-    "logged_in_as": "Logged in as:"
+    "loading": "Loading...",
+    "under_maintenance": "Under Maintenance",
+    "maintenance_desc": "This feature is currently undergoing maintenance. Please check back later.",
+    "page_not_found": "Page Not Found",
+    "page_not_found_desc": "The page you are looking for does not exist or has been moved.",
+    "back_home": "Return to Homepage"
+  },
+  "showcase": {
+    "title": "< SHOWCASE />",
+    "subtitle": "Collection of software, applications, and hardware utilities",
+    "loading": "LOADING SHOWCASE...",
+    "empty": "No projects or utilities published yet.",
+    "view_details": "DETAILS"
+  },
+  "project": {
+    "back": "BACK TO SHOWCASE",
+    "views": "views",
+    "tech_used": "TECH STACK",
+    "specs": "SPECIFICATIONS",
+    "category": "Category:",
+    "platform": "Platform:",
+    "file_size": "File Size:",
+    "version": "Version",
+    "verified": "VERIFIED & SECURE",
+    "verified_desc": "Tested and verified directly by BCT Studio.",
+    "access_web": "OPEN WEB APP",
+    "download_exe": "DOWNLOAD .EXE",
+    "view_github": "GITHUB REPOSITORY",
+    "gallery_title": "PRODUCT GALLERY",
+    "close_hint": "(Click anywhere to close)",
+    "connecting": "CONNECTING..."
   }
 }

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -119,11 +119,11 @@ const ProjectCMS = () => {
         setFeatured(Boolean(data.featured));
         setPublished(data.published !== false);
       } else {
-        alert('Không tìm thấy dự án này!');
+        alert('Project not found!');
         navigate('/admin');
       }
     } catch (err) {
-      alert('Lỗi tải dự án: ' + err.message);
+      alert('Error loading project: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -157,140 +157,119 @@ const ProjectCMS = () => {
     }
   };
 
-  const insertMarkdown = (prefix, suffix = '', placeholder = '') => {
+  const handleCoverUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setThumbnail(event.target.result);
+      setStatusMsg('Cover image loaded!');
+      setTimeout(() => setStatusMsg(''), 2500);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAddGalleryImage = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const caption = prompt('Enter a short caption for this photo (optional):') || '';
+      setGalleryImages(prev => [...prev, { url: event.target.result, caption }]);
+      setStatusMsg('Gallery photo added!');
+      setTimeout(() => setStatusMsg(''), 2500);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const insertMarkdown = (prefix, suffix = '', defaultText = '') => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const selectedText = textarea.value.substring(start, end) || placeholder;
-    const replacement = `${prefix}${selectedText}${suffix}`;
+    const selected = content.substring(start, end) || defaultText;
+    const replacement = prefix + selected + suffix;
 
-    const newContent = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
+    const newContent = content.substring(0, start) + replacement + content.substring(end);
     setContent(newContent);
 
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, start + prefix.length + selectedText.length);
+      textarea.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
     }, 50);
   };
 
-  const compressImage = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (e) => {
-        const img = new Image();
-        img.src = e.target.result;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const maxWidth = 1280;
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/webp', 0.85));
-        };
-        img.onerror = (err) => reject(err);
-      };
-      reader.onerror = (err) => reject(err);
-    });
-  };
-
-  const handleCoverUpload = async (e) => {
-    const file = e.target.files?.[0];
+  const handleInsertImageToArticle = (e) => {
+    const file = e.target.files[0];
     if (!file) return;
-    try {
-      const compressed = await compressImage(file);
-      setThumbnail(compressed);
-      setStatusMsg('Đã tải ảnh bìa thành công!');
-      setTimeout(() => setStatusMsg(''), 3000);
-    } catch {
-      alert('Lỗi xử lý ảnh bìa!');
-    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const caption = prompt('Image description caption:') || 'Product Image';
+      const imgMarkdown = `\n\n![${caption}](${event.target.result})\n*${caption}*\n\n`;
+      insertMarkdown(imgMarkdown, '', '');
+      setStatusMsg('Image inserted into markdown!');
+      setTimeout(() => setStatusMsg(''), 2500);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
-  const handleAddGalleryImage = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const compressed = await compressImage(file);
-      const caption = prompt('Nhập chú thích (caption) cho ảnh này:', 'Ảnh thực tế sản phẩm') || '';
-      setGalleryImages(prev => [...prev, { url: compressed, caption }]);
-    } catch {
-      alert('Lỗi tải ảnh vào thư viện!');
-    }
-  };
-
-  const handleInsertImageToArticle = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const compressed = await compressImage(file);
-      const alt = prompt('Nhập chú thích ảnh minh họa:', 'Ảnh minh họa chi tiết') || 'Hình ảnh thực tế';
-      insertMarkdown(`\n\n![${alt}](${compressed})\n*${alt}*\n\n`);
-    } catch {
-      alert('Lỗi chèn ảnh vào bài viết!');
-    }
-  };
-
-  const handleSave = async (isPublishing = true) => {
+  const handleSave = async (publishState = published) => {
     if (!title.trim()) {
-      alert('Vui lòng nhập Tên dự án!');
+      alert('Please enter a project title!');
       return;
     }
-    const finalSlug = slug.trim() || generateSlug(title) || 'project-' + Date.now().toString(36);
-    const targetDocId = (id && id !== 'new') ? id : finalSlug;
+    const finalSlug = slug.trim() || generateSlug(title);
+    if (!finalSlug) {
+      alert('Invalid project slug/ID!');
+      return;
+    }
 
     setSaving(true);
-    setStatusMsg('Đang lưu dữ liệu dự án...');
+    setStatusMsg('Saving to database...');
 
     try {
-      const parsedTags = tags.split(',').map(t => t.trim()).filter(Boolean);
+      const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
 
       const projectData = {
-        id: targetDocId,
-        slug: targetDocId,
         title: title.trim(),
-        category: category.trim(),
+        id: finalSlug,
+        slug: finalSlug,
+        category: category.trim() || 'Software Tool',
         description: description.trim(),
-        shortDescription: description.trim(),
         content: content.trim(),
-        fullDescription: content.trim(),
         thumbnail: thumbnail.trim(),
-        coverImage: thumbnail.trim(),
         galleryImages: galleryImages,
         demoUrl: demoUrl.trim(),
         githubUrl: githubUrl.trim(),
         downloadUrl: downloadUrl.trim(),
         actionButtonLabel: actionButtonLabel.trim(),
-        tags: parsedTags,
+        tags: tagList,
         platform: platform.trim(),
         version: version.trim(),
         fileSize: fileSize.trim(),
         views: Number(views) || 0,
         order: Number(order) || 1,
         featured: Boolean(featured),
-        published: Boolean(isPublishing),
-        updatedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString()
+        published: Boolean(publishState),
+        updatedAt: new Date().toISOString()
       };
 
-      await setDoc(doc(db, 'projects', targetDocId), projectData, { merge: true });
+      if (!id || id === 'new') {
+        projectData.createdAt = new Date().toISOString();
+      }
 
-      setStatusMsg('✅ Đã lưu dự án thành công!');
+      await setDoc(doc(db, 'projects', finalSlug), projectData, { merge: true });
+
+      setStatusMsg(publishState ? 'Published successfully!' : 'Draft saved successfully!');
       setTimeout(() => {
         navigate('/admin');
-      }, 1000);
+      }, 1200);
     } catch (err) {
-      alert('Lỗi lưu dự án: ' + err.message);
-      setStatusMsg('');
+      alert('Save error: ' + err.message);
+      setStatusMsg('Error saving project.');
     } finally {
       setSaving(false);
     }
@@ -300,7 +279,7 @@ const ProjectCMS = () => {
     return (
       <div className="project-cms-loading">
         <div className="spinner" />
-        <p>Đang tải dữ liệu dự án...</p>
+        <p>Loading project workspace...</p>
       </div>
     );
   }
@@ -310,11 +289,11 @@ const ProjectCMS = () => {
       {/* TOPBAR */}
       <header className="project-cms-header">
         <div className="header-left">
-          <Link to="/admin" className="back-btn" title="Quay lại Admin Dashboard">
+          <Link to="/admin" className="back-btn" title="Back to Admin Dashboard">
             <ArrowLeft size={18} />
           </Link>
           <div className="cms-title-info">
-            <h1>{id === 'new' ? 'Soạn Dự Án Mới' : `Chỉnh Sửa: ${title || id}`}</h1>
+            <h1>{id === 'new' ? 'New Project Case Study' : `Editing: ${title || id}`}</h1>
             <span className="cms-badge">{category}</span>
           </div>
         </div>
@@ -326,21 +305,21 @@ const ProjectCMS = () => {
             <button 
               className={`mode-btn ${viewMode === 'editor' ? 'active' : ''}`}
               onClick={() => setViewMode('editor')}
-              title="Chỉ hiện Soạn thảo"
+              title="Editor Only"
             >
               <Edit3 size={15} />
             </button>
             <button 
               className={`mode-btn ${viewMode === 'split' ? 'active' : ''}`}
               onClick={() => setViewMode('split')}
-              title="Chia đôi màn hình (Split-View)"
+              title="Split View"
             >
               <Columns size={15} />
             </button>
             <button 
               className={`mode-btn ${viewMode === 'preview' ? 'active' : ''}`}
               onClick={() => setViewMode('preview')}
-              title="Chỉ hiện Xem trước"
+              title="Preview Only"
             >
               <Eye size={15} />
             </button>
@@ -351,14 +330,14 @@ const ProjectCMS = () => {
             onClick={() => handleSave(false)}
             disabled={saving}
           >
-            <Save size={15} /> Lưu Nháp
+            <Save size={15} /> Save Draft
           </button>
           <button 
             className="btn-cms-primary" 
             onClick={() => handleSave(true)}
             disabled={saving}
           >
-            <Send size={15} /> {saving ? 'Đang Lưu...' : 'Xuất Bản'}
+            <Send size={15} /> {saving ? 'Saving...' : 'Publish'}
           </button>
         </div>
       </header>
@@ -369,20 +348,20 @@ const ProjectCMS = () => {
         {/* LEFT SIDEBAR: METADATA & GALLERY */}
         <aside className="project-cms-sidebar">
           
-          {/* SECTION 1: NHẬN DIỆN */}
+          {/* SECTION 1: IDENTITY */}
           <div className="sidebar-group">
-            <h3><Package size={16} /> 1. Thông Tin Nhận Diện</h3>
+            <h3><Package size={16} /> 1. Project Identity</h3>
             <div className="form-item">
-              <label>Tên dự án *</label>
+              <label>Project Title *</label>
               <input 
                 type="text" 
-                placeholder="VD: PTZ Controller Portable" 
+                placeholder="e.g. PTZ Controller Portable" 
                 value={title} 
                 onChange={handleTitleChange} 
               />
             </div>
             <div className="form-item">
-              <label>Đường dẫn tĩnh (Slug / ID) *</label>
+              <label>Static Slug / URL ID *</label>
               <input 
                 type="text" 
                 placeholder="ptz-controller-portable" 
@@ -391,46 +370,46 @@ const ProjectCMS = () => {
               />
             </div>
             <div className="form-item">
-              <label>Chuyên mục</label>
+              <label>Category</label>
               <input 
                 type="text" 
-                placeholder="VD: Camera Tool, IoT / Hardware, iOS Jailbreak..." 
+                placeholder="e.g. Camera Tool, IoT / Hardware, iOS Jailbreak..." 
                 value={category} 
                 onChange={(e) => setCategory(e.target.value)} 
               />
             </div>
             <div className="form-item">
-              <label>Mô tả ngắn (Hiển thị thẻ Card ngoài trang chủ)</label>
+              <label>Short Description (Card summary on home & showcase)</label>
               <textarea 
                 rows={3} 
-                placeholder="Tóm tắt ngắn gọn 1-2 câu về giải pháp và tính năng cốt lõi..." 
+                placeholder="Brief 1-2 sentence overview of the solution and core features..." 
                 value={description} 
                 onChange={(e) => setDescription(e.target.value)} 
               />
             </div>
           </div>
 
-          {/* SECTION 2: ẢNH BÌA & GALLERY */}
+          {/* SECTION 2: COVER & GALLERY */}
           <div className="sidebar-group">
-            <h3><ImageIcon size={16} /> 2. Ảnh Bìa 16:9 & Thư Viện Ảnh Thật</h3>
+            <h3><ImageIcon size={16} /> 2. 16:9 Cover & Gallery</h3>
             <div className="form-item">
-              <label>Ảnh bìa đại diện (Thumbnail / Cover)</label>
+              <label>Cover / Thumbnail Image</label>
               <div className="cover-uploader">
                 {thumbnail ? (
                   <div className="cover-preview-wrapper">
                     <img src={thumbnail} alt="Cover preview" />
-                    <button className="remove-cover-btn" onClick={() => setThumbnail('')} title="Xóa ảnh"><Trash2 size={14} /></button>
+                    <button className="remove-cover-btn" onClick={() => setThumbnail('')} title="Remove image"><Trash2 size={14} /></button>
                   </div>
                 ) : (
                   <label className="upload-dropzone">
                     <Upload size={22} />
-                    <span>Tải ảnh bìa 16:9 từ máy</span>
+                    <span>Upload 16:9 Cover Image</span>
                     <input type="file" accept="image/*" onChange={handleCoverUpload} hidden />
                   </label>
                 )}
                 <input 
                   type="text" 
-                  placeholder="Hoặc dán URL ảnh trực tiếp..." 
+                  placeholder="Or paste direct image URL..." 
                   value={thumbnail} 
                   onChange={(e) => setThumbnail(e.target.value)} 
                   style={{ marginTop: '0.45rem' }}
@@ -441,9 +420,9 @@ const ProjectCMS = () => {
             {/* GALLERY MANAGER */}
             <div className="form-item">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                <label style={{ margin: 0 }}>Bộ sưu tập ảnh thực tế ({galleryImages.length})</label>
+                <label style={{ margin: 0 }}>Product Gallery Photos ({galleryImages.length})</label>
                 <label className="btn-add-gallery">
-                  <Plus size={13} /> Thêm ảnh thật
+                  <Plus size={13} /> Add Photo
                   <input type="file" accept="image/*" onChange={handleAddGalleryImage} hidden />
                 </label>
               </div>
@@ -451,12 +430,12 @@ const ProjectCMS = () => {
                 {galleryImages.map((g, idx) => (
                   <div key={idx} className="gallery-thumb-item">
                     <img src={g.url} alt={g.caption || 'Gallery photo'} />
-                    <span className="gallery-caption-badge">{g.caption || `Ảnh #${idx + 1}`}</span>
+                    <span className="gallery-caption-badge">{g.caption || `Photo #${idx + 1}`}</span>
                     <button 
                       type="button"
                       className="btn-del-thumb" 
                       onClick={() => setGalleryImages(prev => prev.filter((_, i) => i !== idx))}
-                      title="Xóa ảnh này"
+                      title="Delete photo"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -466,20 +445,20 @@ const ProjectCMS = () => {
             </div>
           </div>
 
-          {/* SECTION 3: LIÊN KẾT HÀNH ĐỘNG */}
+          {/* SECTION 3: ACTION BUTTONS & LINKS */}
           <div className="sidebar-group">
-            <h3><LinkIcon size={16} /> 3. Bộ Liên Kết & Nút Bấm</h3>
+            <h3><LinkIcon size={16} /> 3. Actions & Links</h3>
             <div className="form-item">
-              <label>Tên nút hành động chính (Tùy biến)</label>
+              <label>Custom Main Button Label (Optional)</label>
               <input 
                 type="text" 
-                placeholder="VD: Truy Cập Web App, Tải Bản .EXE, Thêm Vào Cydia..." 
+                placeholder="e.g. Open Web App, Download .EXE, View on GitHub..." 
                 value={actionButtonLabel} 
                 onChange={(e) => setActionButtonLabel(e.target.value)} 
               />
             </div>
             <div className="form-item">
-              <label>Link Live Demo / Ứng dụng Web</label>
+              <label>Live Demo / Web App URL</label>
               <input 
                 type="text" 
                 placeholder="https://..." 
@@ -488,7 +467,7 @@ const ProjectCMS = () => {
               />
             </div>
             <div className="form-item">
-              <label>Link Mã Nguồn GitHub</label>
+              <label>GitHub Repository URL</label>
               <input 
                 type="text" 
                 placeholder="https://github.com/..." 
@@ -497,7 +476,7 @@ const ProjectCMS = () => {
               />
             </div>
             <div className="form-item">
-              <label>Link Tải Xuống File Cài Đặt (.exe, .zip, .deb)</label>
+              <label>Direct Download Link (.exe, .zip, .deb)</label>
               <input 
                 type="text" 
                 placeholder="https://..." 
@@ -507,11 +486,11 @@ const ProjectCMS = () => {
             </div>
           </div>
 
-          {/* SECTION 4: THÔNG SỐ KỸ THUẬT */}
+          {/* SECTION 4: TECH SPECS & METADATA */}
           <div className="sidebar-group">
-            <h3><Tag size={16} /> 4. Thông Số Kỹ Thuật (Tech Specs)</h3>
+            <h3><Tag size={16} /> 4. Tech Specifications</h3>
             <div className="form-item">
-              <label>Thẻ công nghệ (Tags, phân cách bằng dấu phẩy)</label>
+              <label>Tech Stack Tags (Comma separated)</label>
               <input 
                 type="text" 
                 placeholder="C#, .NET WinForms, VISCA Serial, Always-On-Top" 
@@ -521,7 +500,7 @@ const ProjectCMS = () => {
             </div>
             <div className="form-row-2">
               <div className="form-item">
-                <label>Hệ điều hành / Nền tảng</label>
+                <label>Platform / OS</label>
                 <input 
                   type="text" 
                   placeholder="Windows 10/11" 
@@ -530,7 +509,7 @@ const ProjectCMS = () => {
                 />
               </div>
               <div className="form-item">
-                <label>Phiên bản</label>
+                <label>Version</label>
                 <input 
                   type="text" 
                   placeholder="v1.0.0" 
@@ -541,7 +520,7 @@ const ProjectCMS = () => {
             </div>
             <div className="form-row-2">
               <div className="form-item">
-                <label>Dung lượng file</label>
+                <label>File Size</label>
                 <input 
                   type="text" 
                   placeholder="~50 MB" 
@@ -550,7 +529,7 @@ const ProjectCMS = () => {
                 />
               </div>
               <div className="form-item">
-                <label>Thứ tự sắp xếp (STT)</label>
+                <label>Display Order (Priority)</label>
                 <input 
                   type="number" 
                   value={order} 
@@ -565,7 +544,7 @@ const ProjectCMS = () => {
                   checked={featured} 
                   onChange={(e) => setFeatured(e.target.checked)} 
                 />
-                ⭐ Ghim nổi bật trang chủ
+                ⭐ Feature on Homepage
               </label>
               <label>
                 <input 
@@ -573,7 +552,7 @@ const ProjectCMS = () => {
                   checked={published} 
                   onChange={(e) => setPublished(e.target.checked)} 
                 />
-                🌐 Công khai hiển thị
+                🌐 Publicly Visible
               </label>
             </div>
           </div>
@@ -587,20 +566,20 @@ const ProjectCMS = () => {
             <div className="editor-pane">
               {/* TOOLBAR */}
               <div className="markdown-toolbar">
-                <button type="button" onClick={() => insertMarkdown('## ', '', 'Tiêu Đề Mục')} title="Tiêu đề H2"><Heading2 size={16} /></button>
-                <button type="button" onClick={() => insertMarkdown('### ', '', 'Tiêu Đề Nhỏ')} title="Tiêu đề H3"><Heading3 size={16} /></button>
+                <button type="button" onClick={() => insertMarkdown('## ', '', 'Section Title')} title="Heading 2"><Heading2 size={16} /></button>
+                <button type="button" onClick={() => insertMarkdown('### ', '', 'Subsection')} title="Heading 3"><Heading3 size={16} /></button>
                 <span className="toolbar-divider" />
-                <button type="button" onClick={() => insertMarkdown('**', '**', 'chữ đậm')} title="In đậm"><Bold size={16} /></button>
-                <button type="button" onClick={() => insertMarkdown('*', '*', 'chữ nghiêng')} title="In nghiêng"><Italic size={16} /></button>
-                <button type="button" onClick={() => insertMarkdown('> ', '', 'Đoạn trích dẫn hoặc lưu ý')} title="Trích dẫn"><Quote size={16} /></button>
+                <button type="button" onClick={() => insertMarkdown('**', '**', 'bold text')} title="Bold"><Bold size={16} /></button>
+                <button type="button" onClick={() => insertMarkdown('*', '*', 'italic text')} title="Italic"><Italic size={16} /></button>
+                <button type="button" onClick={() => insertMarkdown('> ', '', 'Callout note or quote')} title="Quote"><Quote size={16} /></button>
                 <span className="toolbar-divider" />
-                <button type="button" onClick={() => insertMarkdown('```csharp\n', '\n```', '// Code snippet')} title="Khối lệnh Code"><Code size={16} /></button>
-                <button type="button" onClick={() => insertMarkdown('[', '](https://...)', 'Tên liên kết')} title="Chèn Link"><LinkIcon size={16} /></button>
-                <button type="button" onClick={() => insertMarkdown('- ', '', 'Tính năng 1\n- Tính năng 2')} title="Danh sách"><List size={16} /></button>
-                <button type="button" onClick={() => insertMarkdown('| Thông Số | Chi Tiết |\n| :--- | :--- |\n| CPU | Dual-Core |\n| RAM | 4GB |\n')} title="Bảng so sánh"><TableIcon size={16} /></button>
+                <button type="button" onClick={() => insertMarkdown('```csharp\n', '\n```', '// Code snippet')} title="Code Block"><Code size={16} /></button>
+                <button type="button" onClick={() => insertMarkdown('[', '](https://...)', 'Link text')} title="Insert Link"><LinkIcon size={16} /></button>
+                <button type="button" onClick={() => insertMarkdown('- ', '', 'Feature 1\n- Feature 2')} title="Bullet List"><List size={16} /></button>
+                <button type="button" onClick={() => insertMarkdown('| Feature | Specification |\n| :--- | :--- |\n| CPU | Dual-Core |\n| RAM | 4GB |\n')} title="Table"><TableIcon size={16} /></button>
                 <span className="toolbar-divider" />
-                <label className="toolbar-upload-btn" title="Tải ảnh minh họa chèn vào bài viết">
-                  <ImageIcon size={16} /> <span>Chèn ảnh thực tế</span>
+                <label className="toolbar-upload-btn" title="Upload illustration image to article">
+                  <ImageIcon size={16} /> <span>Insert Photo</span>
                   <input type="file" accept="image/*" onChange={handleInsertImageToArticle} hidden />
                 </label>
               </div>
@@ -608,7 +587,7 @@ const ProjectCMS = () => {
               <textarea 
                 ref={textareaRef}
                 className="markdown-textarea"
-                placeholder={`# Giới thiệu chi tiết dự án\n\nViết bài viết chi tiết, giới thiệu vấn đề, giải pháp, công nghệ sử dụng và các hình ảnh chụp thật của sản phẩm...\n\n![Ảnh chụp thực tế](/link-anh.png)\n*Hình 1: Chú thích ảnh thực tế...*`}
+                placeholder={`# Project Overview\n\nWrite detailed case study documentation, problem analysis, architecture overview, and embed images...\n\n![Screenshot](/path-to-image.png)\n*Figure 1: Application interface.*`}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
               />
@@ -619,8 +598,8 @@ const ProjectCMS = () => {
           {(viewMode === 'preview' || viewMode === 'split') && (
             <div className="preview-pane">
               <div className="preview-header-bar">
-                <span>👁️ Xem Trước Thực Tế (Live Preview)</span>
-                <span className="live-tag">Trực tiếp</span>
+                <span>👁️ Live Preview</span>
+                <span className="live-tag">Live</span>
               </div>
               
               <div className="preview-content-rendered">
@@ -636,14 +615,14 @@ const ProjectCMS = () => {
                     {version && <span className="chip-ver">{version}</span>}
                     {platform && <span className="chip-plat">💻 {platform}</span>}
                   </div>
-                  <h1 className="preview-hero-title">{title || 'Tên Dự Án Chưa Đặt'}</h1>
-                  <p className="preview-hero-desc">{description || 'Mô tả ngắn của dự án sẽ hiển thị tại đây...'}</p>
+                  <h1 className="preview-hero-title">{title || 'Untitled Project'}</h1>
+                  <p className="preview-hero-desc">{description || 'Short project description will appear here...'}</p>
                 </div>
 
                 {/* GALLERY PREVIEW CAROUSEL */}
                 {galleryImages.length > 0 && (
                   <div className="preview-gallery-section">
-                    <h4>📸 Bộ Sưu Tập Ảnh Thực Tế ({galleryImages.length})</h4>
+                    <h4>📸 Product Gallery ({galleryImages.length})</h4>
                     <div className="preview-gallery-scroll">
                       {galleryImages.map((g, i) => (
                         <div key={i} className="preview-gallery-card">
@@ -660,7 +639,7 @@ const ProjectCMS = () => {
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
-                      code({ node, inline, className, children, ...props }) {
+                      code({ _node, inline, className, children, ...props }) {
                         const match = /language-(\w+)/.exec(className || '');
                         return !inline && match ? (
                           <SyntaxHighlighter
@@ -679,7 +658,7 @@ const ProjectCMS = () => {
                       }
                     }}
                   >
-                    {content || '*Chưa có nội dung bài viết. Hãy soạn thảo ở khung bên trái...*'}
+                    {content || '*No content yet. Start writing in the editor pane on the left...*'}
                   </ReactMarkdown>
                 </div>
               </div>

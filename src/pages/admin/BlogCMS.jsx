@@ -86,11 +86,11 @@ const BlogCMS = () => {
         setThumbnail(data.thumbnail || '');
         setPublished(data.published || false);
       } else {
-        alert('Không tìm thấy bài viết này!');
+        alert('Article not found!');
         navigate('/admin');
       }
     } catch (err) {
-      alert('Lỗi tải bài viết: ' + err.message);
+      alert('Error loading article: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -119,7 +119,7 @@ const BlogCMS = () => {
 
   const handleSave = async (isPublishing = false) => {
     if (!title.trim() || !content.trim()) {
-      alert("Vui lòng điền đủ Tiêu đề và Nội dung bài viết.");
+      alert("Please provide both Title and Content for the article.");
       return;
     }
     
@@ -135,142 +135,120 @@ const BlogCMS = () => {
         category,
         thumbnail,
         published: isPublishing,
-        date: new Date().toLocaleDateString('vi-VN'),
+        date: new Date().toLocaleDateString('en-US'),
         timestamp: new Date(),
         author: 'BCT0902 Admin'
       };
 
       await setDoc(doc(db, 'blog_posts', targetId), postData, { merge: true });
       setPublished(isPublishing);
-      showStatus(isPublishing ? "✅ ĐÃ XUẤT BẢN THÀNH CÔNG!" : "💾 ĐÃ LƯU BẢN NHÁP!");
+      showStatus(isPublishing ? "✅ PUBLISHED SUCCESSFULLY!" : "💾 DRAFT SAVED SUCCESSFULLY!");
       
       if (id === 'new') {
         window.history.replaceState(null, '', `/admin/cms/${targetId}`);
       }
     } catch (err) {
-      alert('Lỗi lưu bài viết: ' + err.message);
+      console.error(err);
+      showStatus("❌ ERROR SAVING: " + err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Kích thước ảnh tối đa là 5MB.');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const img = new Image();
-        img.src = reader.result;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const MAX_W = 1200;
-          
-          if (width > MAX_W) {
-            height *= MAX_W / width;
-            width = MAX_W;
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          setThumbnail(canvas.toDataURL('image/jpeg', 0.8));
-        };
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Insert Markdown formatting at cursor position
-  const insertMarkdown = (prefix, suffix = '', defaultText = '') => {
+  const insertMarkdown = (before, after = '', defaultText = '') => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const selectedText = content.substring(start, end) || defaultText;
-    const replacement = prefix + selectedText + suffix;
+    const previousText = textarea.value;
+    const selectedText = previousText.substring(start, end) || defaultText;
 
-    const newContent = content.substring(0, start) + replacement + content.substring(end);
-    setContent(newContent);
+    const newText = previousText.substring(0, start) + before + selectedText + after + previousText.substring(end);
+    setContent(newText);
 
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, start + prefix.length + selectedText.length);
-    }, 10);
+      textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length);
+    }, 50);
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        setThumbnail(uploadEvent.target.result);
+        showStatus("Cover image loaded!");
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   if (loading) {
     return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#090a0f', color: '#f4f4f5', fontFamily: 'Inter, sans-serif' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div className="spin" style={{ width: 20, height: 20, border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#5e6ad2', borderRadius: '50%' }} />
-          <span>Đang khởi tạo không gian soạn thảo...</span>
-        </div>
+      <div className="cms-loading-screen">
+        <div className="cms-spinner" />
+        <p>Loading editor...</p>
       </div>
     );
   }
 
   return (
     <div className="cms-container">
-      {/* Header Bar */}
+      {/* Top Header */}
       <header className="cms-header">
         <div className="cms-header-left">
-          <button className="cms-back-btn" onClick={() => navigate('/admin')} title="Quay về Admin">
-            <ArrowLeft size={16} />
-            <span>Quản Trị</span>
+          <button className="cms-icon-btn" onClick={() => navigate('/admin')} title="Back to Admin">
+            <ArrowLeft size={18} />
           </button>
-          <input 
-            type="text" 
-            className="cms-title-input" 
-            placeholder="Nhập tiêu đề bài viết..." 
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+          <div className="cms-title-wrapper">
+            <input 
+              type="text" 
+              className="cms-title-input" 
+              placeholder="Article title here..." 
+              value={title} 
+              onChange={e => setTitle(e.target.value)} 
+            />
+          </div>
         </div>
 
-        <div className="cms-header-actions">
-          {/* View Mode Switcher */}
-          <div className="cms-view-mode-tabs">
+        <div className="cms-header-right">
+          {/* Mode switch */}
+          <div className="cms-view-modes">
             <button 
               className={`cms-view-mode-tab ${viewMode === 'split' ? 'active' : ''}`}
               onClick={() => setViewMode('split')}
-              title="Xem chia đôi 50/50"
+              title="Split View"
             >
               <Columns size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-              <span>Chia Đôi</span>
+              <span>Split</span>
             </button>
             <button 
               className={`cms-view-mode-tab ${viewMode === 'editor' ? 'active' : ''}`}
               onClick={() => setViewMode('editor')}
-              title="Toàn màn hình soạn thảo"
+              title="Editor Only"
             >
               <Edit3 size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-              <span>Soạn Thảo</span>
+              <span>Editor</span>
             </button>
             <button 
               className={`cms-view-mode-tab ${viewMode === 'preview' ? 'active' : ''}`}
               onClick={() => setViewMode('preview')}
-              title="Toàn màn hình xem trước"
+              title="Preview Only"
             >
               <Eye size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-              <span>Xem Trước</span>
+              <span>Preview</span>
             </button>
           </div>
 
           <button className="cms-btn draft" disabled={saving} onClick={() => handleSave(false)}>
             <Save size={15} />
-            <span>{saving ? 'Đang lưu...' : 'Lưu Nháp'}</span>
+            <span>{saving ? 'Saving...' : 'Save Draft'}</span>
           </button>
           <button className="cms-btn publish" disabled={saving} onClick={() => handleSave(true)}>
             <Send size={15} />
-            <span>Xuất Bản Ngay</span>
+            <span>Publish Now</span>
           </button>
         </div>
       </header>
@@ -281,12 +259,12 @@ const BlogCMS = () => {
         <aside className="cms-sidebar">
           {/* Cover Image */}
           <div className="cms-sidebar-section">
-             <label>ẢNH BÌA (COVER IMAGE)</label>
+             <label>COVER IMAGE</label>
              <label className="cms-img-uploader" style={{ backgroundImage: thumbnail ? `url(${thumbnail})` : 'none' }}>
                 {!thumbnail && (
                   <>
                     <Upload size={22} style={{ color: 'var(--cms-text-secondary)' }} />
-                    <span style={{ fontSize: '0.8rem', color: 'var(--cms-text-secondary)' }}>Click để tải ảnh lên</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--cms-text-secondary)' }}>Click to upload cover</span>
                   </>
                 )}
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
@@ -298,58 +276,58 @@ const BlogCMS = () => {
                  style={{ color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '0.45rem', fontSize: '0.75rem', gap: '0.4rem' }}
                >
                  <Trash2 size={13} />
-                 <span>Gỡ ảnh bìa</span>
+                 <span>Remove Cover</span>
                </button>
              )}
           </div>
 
           {/* Slug */}
           <div className="cms-sidebar-section">
-            <label>ĐƯỜNG DẪN BÀI VIẾT (SLUG)</label>
+            <label>ARTICLE SLUG / ID</label>
             <input 
               type="text" 
               className="cms-input" 
               value={slug} 
               onChange={e => setSlug(e.target.value)} 
-              placeholder="VD: cac-tinh-nang-react-19" 
+              placeholder="e.g. react-19-features" 
             />
           </div>
 
           {/* Category */}
           <div className="cms-sidebar-section">
-            <label>DANH MỤC LƯU TRỮ</label>
+            <label>CATEGORY</label>
             <select className="cms-select" value={category} onChange={e => setCategory(e.target.value)}>
                <option value="Tech">Technology (Tech)</option>
-               <option value="AI">AI & Trí Tuệ Nhân Tạo</option>
-               <option value="Frontend">Web & Frontend</option>
-               <option value="Backend">Lập Trình Backend</option>
+               <option value="AI">AI & Intelligence</option>
+               <option value="Frontend">Frontend & Web</option>
+               <option value="Backend">Backend Engineering</option>
                <option value="DevLife">Developer Life</option>
-               <option value="Tips">Thủ thuật (Tips & Tricks)</option>
-               <option value="Hardware">Phần cứng (Hardware)</option>
-               <option value="Cybersec">An toàn thông tin</option>
+               <option value="Tips">Tips & Tricks</option>
+               <option value="Hardware">Hardware & IoT</option>
+               <option value="Cybersec">Cybersecurity</option>
             </select>
           </div>
 
           {/* Excerpt */}
           <div className="cms-sidebar-section">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label>TÓM TẮT (SEO EXCERPT)</label>
+              <label>SEO EXCERPT</label>
               <span style={{ fontSize: '0.7rem', color: 'var(--cms-text-muted)' }}>{excerpt.length}/160</span>
             </div>
             <textarea 
               className="cms-textarea" 
               value={excerpt} 
               onChange={e => setExcerpt(e.target.value)} 
-              placeholder="Mô tả ngắn gọn hiển thị trên Google và thẻ bài viết..." 
+              placeholder="Short description displayed on search results and post cards..." 
             />
           </div>
           
           {/* Status Badge */}
           <div className="cms-sidebar-section" style={{ marginTop: 'auto', borderTop: '1px solid var(--cms-border-subtle)', paddingTop: '1rem' }}>
-             <label>TRẠNG THÁI HIỆN TẠI</label>
+             <label>PUBLICATION STATUS</label>
              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: published ? '#10b981' : '#f59e0b', fontWeight: 600, fontSize: '0.85rem' }}>
                <div style={{ width: 8, height: 8, borderRadius: '50%', background: published ? '#10b981' : '#f59e0b' }} />
-               <span>{published ? 'ĐÃ XUẤT BẢN (PUBLIC)' : 'BẢN NHÁP (DRAFT)'}</span>
+               <span>{published ? 'PUBLIC' : 'DRAFT'}</span>
              </div>
           </div>
         </aside>
@@ -358,43 +336,43 @@ const BlogCMS = () => {
         <div className="cms-workspace">
           {/* Markdown Formatting Toolbar */}
           <div className="cms-toolbar">
-            <button className="cms-tool-btn" onClick={() => insertMarkdown('# ', '', 'Tiêu đề 1')} title="Heading 1">
+            <button className="cms-tool-btn" onClick={() => insertMarkdown('# ', '', 'Heading 1')} title="Heading 1">
               <Heading1 size={15} />
             </button>
-            <button className="cms-tool-btn" onClick={() => insertMarkdown('## ', '', 'Tiêu đề 2')} title="Heading 2">
+            <button className="cms-tool-btn" onClick={() => insertMarkdown('## ', '', 'Heading 2')} title="Heading 2">
               <Heading2 size={15} />
             </button>
-            <button className="cms-tool-btn" onClick={() => insertMarkdown('### ', '', 'Tiêu đề 3')} title="Heading 3">
+            <button className="cms-tool-btn" onClick={() => insertMarkdown('### ', '', 'Heading 3')} title="Heading 3">
               <Heading3 size={15} />
             </button>
 
             <div className="cms-tool-divider" />
 
-            <button className="cms-tool-btn" onClick={() => insertMarkdown('**', '**', 'chữ in đậm')} title="In đậm (Bold)">
+            <button className="cms-tool-btn" onClick={() => insertMarkdown('**', '**', 'bold text')} title="Bold">
               <Bold size={14} />
             </button>
-            <button className="cms-tool-btn" onClick={() => insertMarkdown('*', '*', 'chữ in nghiêng')} title="In nghiêng (Italic)">
+            <button className="cms-tool-btn" onClick={() => insertMarkdown('*', '*', 'italic text')} title="Italic">
               <Italic size={14} />
             </button>
-            <button className="cms-tool-btn" onClick={() => insertMarkdown('> ', '', 'Trích dẫn...')} title="Trích dẫn (Quote)">
+            <button className="cms-tool-btn" onClick={() => insertMarkdown('> ', '', 'Quote or callout...')} title="Quote">
               <Quote size={14} />
             </button>
 
             <div className="cms-tool-divider" />
 
-            <button className="cms-tool-btn" onClick={() => insertMarkdown('```javascript\n', '\n```', '// Mã nguồn code')} title="Khối Code">
+            <button className="cms-tool-btn" onClick={() => insertMarkdown('```javascript\n', '\n```', '// Source code snippet')} title="Code Block">
               <Code size={14} />
             </button>
-            <button className="cms-tool-btn" onClick={() => insertMarkdown('[', '](https://example.com)', 'Tên liên kết')} title="Chèn Liên Kết">
+            <button className="cms-tool-btn" onClick={() => insertMarkdown('[', '](https://example.com)', 'Link description')} title="Insert Link">
               <LinkIcon size={14} />
             </button>
-            <button className="cms-tool-btn" onClick={() => insertMarkdown('![', '](https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe)', 'Mô tả hình ảnh')} title="Chèn Ảnh">
+            <button className="cms-tool-btn" onClick={() => insertMarkdown('![', '](https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe)', 'Image caption')} title="Insert Image">
               <ImageIcon size={14} />
             </button>
-            <button className="cms-tool-btn" onClick={() => insertMarkdown('- ', '', 'Mục danh sách')} title="Danh Sách">
+            <button className="cms-tool-btn" onClick={() => insertMarkdown('- ', '', 'List item')} title="Bullet List">
               <List size={14} />
             </button>
-            <button className="cms-tool-btn" onClick={() => insertMarkdown('\n| Cột 1 | Cột 2 | Cột 3 |\n|---|---|---|\n| Dữ liệu 1 | Dữ liệu 2 | Dữ liệu 3 |\n')} title="Chèn Bảng">
+            <button className="cms-tool-btn" onClick={() => insertMarkdown('\n| Column 1 | Column 2 | Column 3 |\n|---|---|---|\n| Data 1 | Data 2 | Data 3 |\n')} title="Insert Table">
               <TableIcon size={14} />
             </button>
           </div>
@@ -407,7 +385,7 @@ const BlogCMS = () => {
                 className="cms-markdown-input" 
                 value={content} 
                 onChange={e => setContent(e.target.value)} 
-                placeholder="# Bắt đầu viết nội dung bài viết bằng Markdown tại đây..." 
+                placeholder="# Start writing markdown content here..." 
               />
             )}
 
@@ -434,8 +412,8 @@ const BlogCMS = () => {
                      </ReactMarkdown>
                    ) : (
                      <div style={{ color: 'var(--cms-text-muted)', textAlign: 'center', marginTop: '6rem' }}>
-                       <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--cms-text-secondary)', marginBottom: '0.5rem' }}>BẢN XEM TRƯỚC BÀI VIẾT</div>
-                       <p style={{ fontSize: '0.85rem' }}>Nội dung Markdown bạn gõ ở khung bên trái sẽ hiển thị trực tiếp và sinh động tại đây.</p>
+                       <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--cms-text-secondary)', marginBottom: '0.5rem' }}>LIVE PREVIEW</div>
+                       <p style={{ fontSize: '0.85rem' }}>Markdown text from the editor pane will be rendered live here.</p>
                      </div>
                    )}
                  </div>

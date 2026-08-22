@@ -18,7 +18,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showAdblockModal, setShowAdblockModal] = useState(false);
   
-  // Custom Autfill CSS override injected locally to prevent white background
+  // Custom Autofill CSS override injected locally to prevent white background
   const autofillFix = `
     input:-webkit-autofill,
     input:-webkit-autofill:hover, 
@@ -50,7 +50,6 @@ const Login = () => {
   const toggleAuthMode = (mode) => {
     setAuthMode(mode);
     setError('');
-    // Clear forms completely
     setEmail('');
     setPassword('');
     setConfirmPassword('');
@@ -65,19 +64,19 @@ const Login = () => {
 
   const recoverPassword = async () => {
     if (!email || !validateEmail(email)) {
-      setError('Vui lòng nhập định dạng email hợp lệ vào ô Email để lấy lại mật khẩu.');
+      setError('Please enter a valid email address to reset password.');
       return;
     }
     setLoading(true);
     try {
       await sendPasswordResetEmail(auth, email);
       setError('');
-      alert('Đã gửi liên kết khôi phục. Vui lòng kiểm tra Hộp thư Email của ngài!');
+      alert('Password reset link sent! Please check your email inbox.');
     } catch (err) {
       if (err.code === 'auth/user-not-found') {
-        setError('Email này chưa được đăng ký trong hệ thống.');
+        setError('This email is not registered in the system.');
       } else {
-        setError('Không thể gửi yêu cầu: ' + err.message);
+        setError('Unable to send request: ' + err.message);
       }
     } finally {
       setLoading(false);
@@ -91,14 +90,14 @@ const Login = () => {
     if (errorStr.includes('blocked')) {
       setShowAdblockModal(true);
     } else if (err.message === 'TIMEOUT_FIRESTORE') {
-      setError("Không kết nối được DB (Timeout 5s).");
+      setError("Database connection timeout (5s).");
     } else if (err?.code === 'unavailable') {
-      setError("Hệ thống hiện đang ngoại tuyến.");
+      setError("System is currently offline.");
       setShowAdblockModal(true);
     } else if (err?.code === 'auth/unauthorized-domain') {
-      setError("Domain này chưa được cấp phép.");
+      setError("This domain is unauthorized.");
     } else {
-      setError('Lỗi kết nối: ' + (err.message || err.toString()));
+      setError('Connection error: ' + (err.message || err.toString()));
     }
   };
 
@@ -108,12 +107,12 @@ const Login = () => {
 
     if (authMode === 'login' && email !== 'admin') {
       if (!validateEmail(email)) {
-        setError('Định dạng email không hợp lệ.');
+        setError('Invalid email format.');
         return;
       }
     } else if (authMode === 'register') {
       if (!validateEmail(email)) {
-        setError('Định dạng email không hợp lệ.');
+        setError('Invalid email format.');
         return;
       }
     }
@@ -159,7 +158,7 @@ const Login = () => {
         navigate('/');
       } catch (err) {
         if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email') {
-           setError('Sai mật khẩu hoặc tên đăng nhập.');
+           setError('Incorrect email/username or password.');
         } else {
            handleError(err);
         }
@@ -169,12 +168,12 @@ const Login = () => {
 
     } else if (authMode === 'register') {
       if (!firstName || !lastName || !username) {
-         setError('Vui lòng điền đầy đủ thông tin cá nhân.');
+         setError('Please fill in all personal information.');
          setLoading(false);
          return;
       }
       if (password !== confirmPassword) {
-         setError('Mật khẩu nhập lại không khớp.');
+         setError('Passwords do not match.');
          setLoading(false);
          return;
       }
@@ -193,14 +192,14 @@ const Login = () => {
         });
         
         setError('');
-        alert('Tạo hồ sơ thành công! Mời bạn tiếp tục sử dụng hệ thống.');
+        alert('Account created successfully! Welcome to BCT Studio.');
         navigate('/');
       } catch (err) {
         console.error(err);
         if (err.code === 'auth/email-already-in-use') {
-           setError('Tài khoản Email này đã tồn tại (Có thể bạn đã đăng nhập bằng Google trước đó). Quên mật khẩu?');
+           setError('This email already exists (you may have signed in with Google previously). Forgot password?');
         } else if (err.code === 'auth/weak-password') {
-           setError('Mật khẩu yếu. Vui lòng sử dụng mật khẩu trên 6 ký tự.');
+           setError('Weak password. Please use at least 6 characters.');
         } else {
            handleError(err);
         }
@@ -228,10 +227,8 @@ const Login = () => {
         secret: secretObj,
       });
 
-      // Window 4 allows ±120 seconds tolerance for any clock drift
       let delta = totp.validate({ token: otpCode, window: 4 });
 
-      // Fallback check in case the secret was saved as raw string
       if (delta === null && typeof totpSecret === 'string') {
         const fallbackTotp = new OTPAuth.TOTP({
           issuer: 'BCT0902_SYSTEM',
@@ -254,7 +251,7 @@ const Login = () => {
         loginAsAdminLocal();
         navigate('/admin');
       } else {
-        setError('Mã xác thực không đúng. Vui lòng kiểm tra lại!');
+        setError('Invalid 2FA verification code. Please check again.');
       }
     } catch (err) {
       handleError(err);
@@ -299,15 +296,15 @@ const Login = () => {
                 </Link>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
                    <p style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
-                     {authMode === 'login' ? 'VUI LÒNG ĐĂNG NHẬP ĐỂ TIẾP TỤC' : 'ĐIỀN THÔNG TIN ĐỂ TẠO CẤP PHÉP MỚI'}
+                     {authMode === 'login' ? 'PLEASE SIGN IN TO CONTINUE' : 'ENTER DETAILS TO CREATE YOUR ACCOUNT'}
                    </p>
                 </div>
               </div>
 
               {error && <div className="error-box" style={{ padding: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', borderRadius: '8px', fontSize: '0.8rem', marginBottom: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                  <span>{error}</span>
-                 {error.includes('tồn tại') && (
-                    <button type="button" onClick={recoverPassword} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '0.4rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>QUÊN MẬT KHẨU?</button>
+                 {error.includes('already exists') && (
+                    <button type="button" onClick={recoverPassword} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '0.4rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>FORGOT PASSWORD?</button>
                  )}
               </div>}
 
@@ -318,26 +315,26 @@ const Login = () => {
                     <div style={{ display: 'flex', gap: '1rem' }}>
                       <div style={{ position: 'relative', flex: 1 }}>
                         <User size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                        <input type="text" placeholder="Họ đệm" value={firstName} onChange={(e) => setFirstName(e.target.value)} required style={{ width: '100%', padding: '1rem 1rem 1rem 2.8rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', outline: 'none' }} />
+                        <input type="text" placeholder="First Name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required style={{ width: '100%', padding: '1rem 1rem 1rem 2.8rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', outline: 'none' }} />
                       </div>
                       <div style={{ position: 'relative', flex: 1 }}>
-                        <input type="text" placeholder="Tên" value={lastName} onChange={(e) => setLastName(e.target.value)} required style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', outline: 'none' }} />
+                        <input type="text" placeholder="Last Name" value={lastName} onChange={(e) => setLastName(e.target.value)} required style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', outline: 'none' }} />
                       </div>
                     </div>
                     <div style={{ position: 'relative' }}>
                       <UserCircle size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                      <input type="text" placeholder="Username (Biệt danh)" value={username} onChange={(e) => setUsername(e.target.value)} required style={{ width: '100%', padding: '1rem 1rem 1rem 3rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', outline: 'none' }} />
+                      <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required style={{ width: '100%', padding: '1rem 1rem 1rem 3rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', outline: 'none' }} />
                     </div>
                   </>
                 )}
 
                 <div style={{ position: 'relative' }}>
                   <Mail size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input type="text" placeholder={authMode === 'login' ? "Email / ADMIN_NETWORK_ID" : "Email hợp lệ (@gmail.com...)"} value={email} onChange={(e) => setEmail(e.target.value)} required style={{ width: '100%', padding: '1rem 1rem 1rem 3rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontFamily: 'var(--font-mono)', outline: 'none' }} />
+                  <input type="text" placeholder={authMode === 'login' ? "Email / ADMIN_NETWORK_ID" : "Valid Email Address"} value={email} onChange={(e) => setEmail(e.target.value)} required style={{ width: '100%', padding: '1rem 1rem 1rem 3rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontFamily: 'var(--font-mono)', outline: 'none' }} />
                 </div>
                 <div style={{ position: 'relative' }}>
                   <Lock size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input type={showPassword ? "text" : "password"} placeholder={authMode === 'login' ? t('login.password_placeholder') : t('login.password_register')} value={password} onChange={(e) => setPassword(e.target.value)} required style={{ width: '100%', padding: '1rem 3rem 1rem 3rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontFamily: 'var(--font-mono)', outline: 'none' }} />
+                  <input type={showPassword ? "text" : "password"} placeholder={t('login.password_placeholder', 'Password')} value={password} onChange={(e) => setPassword(e.target.value)} required style={{ width: '100%', padding: '1rem 3rem 1rem 3rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontFamily: 'var(--font-mono)', outline: 'none' }} />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -346,7 +343,7 @@ const Login = () => {
                 {authMode === 'register' && (
                   <div style={{ position: 'relative' }}>
                     <Lock size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input type={showPassword ? "text" : "password"} placeholder={t('login.confirm_password')} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required style={{ width: '100%', padding: '1rem 3rem 1rem 3rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontFamily: 'var(--font-mono)', outline: 'none' }} />
+                    <input type={showPassword ? "text" : "password"} placeholder={t('login.confirm_password', 'Confirm Password')} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required style={{ width: '100%', padding: '1rem 3rem 1rem 3rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontFamily: 'var(--font-mono)', outline: 'none' }} />
                   </div>
                 )}
                 
@@ -357,24 +354,24 @@ const Login = () => {
                         <input type="checkbox" id="remember" style={{ opacity: 0, position: 'absolute', cursor: 'pointer', width: '100%', height: '100%', zIndex: 2 }} />
                         <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: '2px solid var(--accent-main)', background: 'transparent', transition: 'all 0.3s' }}></div>
                       </div>
-                      <label htmlFor="remember" style={{ color: 'var(--text-muted)', fontSize: '0.85rem', cursor: 'pointer' }}>{t('login.remember_me')}</label>
+                      <label htmlFor="remember" style={{ color: 'var(--text-muted)', fontSize: '0.85rem', cursor: 'pointer' }}>{t('login.remember_me', 'Remember Me')}</label>
                     </div>
-                    <button type="button" onClick={recoverPassword} style={{ background: 'none', border: 'none', color: 'var(--accent-secondary)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}>{t('login.forgot_password')}</button>
+                    <button type="button" onClick={recoverPassword} style={{ background: 'none', border: 'none', color: 'var(--accent-secondary)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}>{t('login.forgot_password', 'Forgot Password?')}</button>
                   </div>
                 )}
 
                 <button type="submit" className="btn-primary" style={{ width: '100%', padding: '1rem', opacity: loading ? 0.7 : 1, marginTop: '0.5rem', fontFamily: "var(--font-heading), 'Chakra Petch', sans-serif", letterSpacing: '1px' }} disabled={loading}>
-                  {loading ? t('login.loading') : (authMode === 'login' ? t('login.btn_login') : t('login.btn_register'))}
+                  {loading ? t('login.loading', 'Loading...') : (authMode === 'login' ? t('login.btn_login', 'LOGIN') : t('login.btn_register', 'REGISTER'))}
                 </button>
 
                 <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
                   {authMode === 'login' ? (
                     <button type="button" onClick={() => toggleAuthMode('register')} style={{ width: '100%', padding: '0.8rem', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--accent-secondary)', color: 'var(--accent-secondary)', borderRadius: '8px', fontSize: '0.9rem', cursor: 'pointer', transition: 'all 0.3s', fontFamily: "var(--font-heading), 'Chakra Petch', sans-serif" }} onMouseOver={(e) => { e.target.style.background = 'var(--accent-secondary)'; e.target.style.color = '#000'; }} onMouseOut={(e) => { e.target.style.background = 'rgba(255, 255, 255, 0.05)'; e.target.style.color = 'var(--accent-secondary)'; }}>
-                      {t('login.go_to_register')}
+                      {t('login.go_to_register', 'CREATE NEW ACCOUNT')}
                     </button>
                   ) : (
                     <button type="button" onClick={() => toggleAuthMode('login')} style={{ color: 'var(--accent-secondary)', fontSize: '0.85rem', textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none' }}>
-                      {t('login.back_to_login')}
+                      {t('login.back_to_login', 'Back to Sign In')}
                     </button>
                   )}
                 </div>
@@ -384,7 +381,7 @@ const Login = () => {
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '2rem 0' }}>
                     <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>HOẶC MẠNG XÃ HỘI</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>OR SOCIAL LOGIN</span>
                     <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
                   </div>
 
@@ -400,7 +397,7 @@ const Login = () => {
           {(step === '2fa_setup' || step === '2fa_verify') && (
             <motion.div key="2fa" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} style={{ textAlign: 'center' }}>
               <button onClick={() => setStep('auth')} style={{ position: 'absolute', left: 0, top: '-2rem', background: 'none', border: 'none', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                <ArrowLeft size={16} /> QUAY LẠI
+                <ArrowLeft size={16} /> BACK
               </button>
 
               <div style={{ marginBottom: '2rem' }}>
@@ -408,10 +405,10 @@ const Login = () => {
                   <Smartphone className="text-glow" size={30} color="var(--accent-main)" />
                 </div>
                 <h2 style={{ fontFamily: 'var(--font-mono)', letterSpacing: '2px', fontSize: '1.2rem', color: '#fff' }}>
-                  XÁC THỰC 2 LỚP
+                  TWO-FACTOR AUTHENTICATION
                 </h2>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                  {step === '2fa_setup' ? 'Quét mã QR bằng App Google Authenticator' : 'Nhập mã 6 chữ số từ điện thoại của bạn'}
+                  {step === '2fa_setup' ? 'Scan the QR code with Google Authenticator app' : 'Enter 6-digit verification code from your device'}
                 </p>
               </div>
 
@@ -430,7 +427,7 @@ const Login = () => {
                 {error && <p style={{ color: '#ef4444', fontSize: '0.8rem' }}>{error}</p>}
 
                 <button onClick={verify2FA} className="btn-primary" style={{ width: '100%', padding: '1rem', fontFamily: "var(--font-heading), 'Chakra Petch', sans-serif", letterSpacing: '1px' }} disabled={otpCode.length !== 6}>
-                  XÁC MINH VÀ TIẾP TỤC
+                  VERIFY & CONTINUE
                 </button>
               </div>
             </motion.div>
@@ -459,12 +456,12 @@ const Login = () => {
              </div>
              
              <h2 style={{ fontFamily: "var(--font-heading), 'Chakra Petch', sans-serif", color: 'var(--accent-gold)', fontSize: '2.2rem', marginBottom: '1.5rem', letterSpacing: '3px', textTransform: 'uppercase' }}>
-               TÁC PHẨM BỊ TỪ CHỐI
+               CONNECTION BLOCKED
              </h2>
              
              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.8, fontSize: '1.05rem', marginBottom: '2.5rem', fontFamily: 'system-ui, sans-serif' }}>
-               Hệ thống bảo vệ đang ngăn chặn kết nối mạng.<br/><br/>
-               Xin vui lòng hạ khiên bảo vệ hoặc tải lại trang.
+               An adblocker or shield is preventing network connection to the database.<br/><br/>
+               Please disable adblocking for this domain or reload the page.
              </p>
 
              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
@@ -472,7 +469,7 @@ const Login = () => {
                  onClick={() => { setShowAdblockModal(false); window.location.reload(); }} 
                  style={{ background: 'var(--accent-gold)', padding: '1rem 2rem', border: '1px solid var(--accent-gold)', color: '#000', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 'bold' }}
                >
-                 TẢI LẠI TRANG
+                 RELOAD PAGE
                </button>
              </div>
           </motion.div>

@@ -14,7 +14,8 @@
     "blog": "Bài viết",
     "chronicles": "Hành trình",
     "shortener": "Rút gọn link",
-    "back_home": "QUAY LẠI TRANG CHỦ"
+    "back_home": "QUAY LẠI TRANG CHỦ",
+    "showcase": "Tiện ích"
   },
   "hero": {
     "greeting": "XIN CHÀO _ // ĐÂY LÀ",
@@ -133,12 +134,24 @@
   "chronicles": {
     "title": "< Hành_Trình_Cá_Nhân />",
     "subtitle": "Trình tự thời gian về sự trưởng thành và phát triển chuyên môn.",
-    "m1": { "year": "2006", "title": "Cấp 1", "desc": "Học tại Trường Tiểu học Tân Thanh 1. Những năm tháng đầu đời làm quen với con chữ." },
-    "m2": { "year": "2011", "title": "Cấp 2", "desc": "Theo học tại THCS Tân Thanh. Bắt đầu hình thành tư duy học tập độc lập." },
-    "m3": { "year": "2015", "title": "Cấp 3", "desc": "Học tại THPT Huỳnh Thúc Kháng. Giai đoạn quan trọng chuẩn bị cho tương lai." },
-    "m4": { 
-      "year": "2019", 
-      "title": "Đại học Lạc Hồng (LHU)", 
+    "m1": {
+      "year": "2006",
+      "title": "Cấp 1",
+      "desc": "Học tại Trường Tiểu học Tân Thanh 1. Những năm tháng đầu đời làm quen với con chữ."
+    },
+    "m2": {
+      "year": "2011",
+      "title": "Cấp 2",
+      "desc": "Theo học tại THCS Tân Thanh. Bắt đầu hình thành tư duy học tập độc lập."
+    },
+    "m3": {
+      "year": "2015",
+      "title": "Cấp 3",
+      "desc": "Học tại THPT Huỳnh Thúc Kháng. Giai đoạn quan trọng chuẩn bị cho tương lai."
+    },
+    "m4": {
+      "year": "2019",
+      "title": "Đại học Lạc Hồng (LHU)",
       "desc": "Giai đoạn tích lũy kiến thức chuyên môn và khẳng định năng lực qua các dự án thực tế cùng nhiều giải thưởng học thuật.",
       "achievements": [
         "Tốt nghiệp loại Giỏi chuyên ngành Công Nghệ Thông Tin",
@@ -150,8 +163,16 @@
         "Dự án Trao tặng máy tính - Vững bước khó khăn 2021"
       ]
     },
-    "m5": { "year": "2023", "title": "Kỹ thuật viên @ FPT", "desc": "Thực tập và làm việc tại tập đoàn FPT. Trải nghiệm môi trường làm việc chuyên nghiệp hàng đầu Việt Nam với vai trò kỹ thuật." },
-    "m6": { "year": "07/2023 - 01/2025", "title": "IT @ Chính Nam Biên Hòa", "desc": "Phụ trách mảng CNTT tại Công ty Chính Nam Biên Hòa trong 1 năm 7 tháng. Hiện tại tôi đang tự do và sẵn sàng cho những thử thách mới." }
+    "m5": {
+      "year": "2023",
+      "title": "Kỹ thuật viên @ FPT",
+      "desc": "Thực tập và làm việc tại tập đoàn FPT. Trải nghiệm môi trường làm việc chuyên nghiệp hàng đầu Việt Nam với vai trò kỹ thuật."
+    },
+    "m6": {
+      "year": "07/2023 - 01/2025",
+      "title": "IT @ Chính Nam Biên Hòa",
+      "desc": "Phụ trách mảng CNTT tại Công ty Chính Nam Biên Hòa trong 1 năm 7 tháng. Hiện tại tôi đang tự do và sẵn sàng cho những thử thách mới."
+    }
   },
   "blog": {
     "title": "AI INSIGHTS",
@@ -188,7 +209,23 @@
     "btn_save": "LƯU THAY ĐỔI",
     "qr_title": "MÃ QR CHI TIẾT",
     "btn_download_qr": "TẢI MÃ QR",
-    "err_enter_url": "Vui lòng nhập đường dẫn gốc cần rút gọn."
+    "err_enter_url": "Vui lòng nhập đường dẫn gốc cần rút gọn.",
+    "copied": "ĐÃ SAO CHÉP",
+    "copy_link": "SAO CHÉP LINK",
+    "download_qr": "TẢI QR",
+    "download_high_res_qr": "TẢI QR CHẤT LƯỢNG CAO",
+    "sys_notification": "THÔNG BÁO HỆ THỐNG",
+    "welcome_msg": "Chào mừng ngài đến với trình rút gọn liên kết BCT IRIS.",
+    "guest_rule": "Tài khoản khách: Liên kết sẽ tự động hết hạn sau 30 ngày.",
+    "member_rule": "Tài khoản thành viên: Lưu trữ vĩnh viễn và có quyền quản lý, chỉnh sửa liên kết.",
+    "login_cta": "Hãy đăng nhập để có quyền kiểm soát tối đa!",
+    "btn_understood": "TÔI ĐÃ HIỂU",
+    "original_url": "ĐƯỜNG DẪN GỐC",
+    "slug_label": "MÃ ĐỊNH DANH (SLUG)",
+    "slug_warning": "* Thay đổi slug sẽ làm link cũ không hoạt động.",
+    "cancel": "HỦY",
+    "save_changes": "LƯU THAY ĐỔI",
+    "qr_details": "MÃ QR CHI TIẾT"
   },
   "login": {
     "title_login": "VUI LÒNG ĐĂNG NHẬP ĐỂ TIẾP TỤC",
@@ -206,7 +243,36 @@
     "error": "Đã xảy ra lỗi hệ thống khi cố gắng xử lý yêu cầu chuyển hướng của bạn."
   },
   "common": {
-    "error": "Có lỗi xảy ra, vui lòng thử lại.",
-    "logged_in_as": "Đang đăng nhập với:"
+    "loading": "Đang tải...",
+    "under_maintenance": "Hệ Thống Đang Bảo Trì",
+    "maintenance_desc": "Chức năng này hiện đang được nâng cấp bảo trì. Vui lòng quay lại sau.",
+    "page_not_found": "Không Tìm Thấy Trang",
+    "page_not_found_desc": "Trang bạn đang tìm kiếm không tồn tại hoặc đã được di chuyển.",
+    "back_home": "Về Trang Chủ"
+  },
+  "showcase": {
+    "title": "< TIỆN ÍCH />",
+    "subtitle": "Bộ sưu tập phần mềm, ứng dụng và tiện ích phần cứng",
+    "loading": "ĐANG TẢI DỮ LIỆU TIỆN ÍCH...",
+    "empty": "Chưa có dự án hoặc tiện ích nào được công bố.",
+    "view_details": "CHI TIẾT"
+  },
+  "project": {
+    "back": "QUAY LẠI TIỆN ÍCH",
+    "views": "lượt xem",
+    "tech_used": "CÔNG NGHỆ SỬ DỤNG",
+    "specs": "THÔNG SỐ KỸ THUẬT",
+    "category": "Chuyên mục:",
+    "platform": "Nền tảng:",
+    "file_size": "Dung lượng:",
+    "version": "Phiên bản",
+    "verified": "AN TOÀN & XÁC THỰC",
+    "verified_desc": "Đã được kiểm thử và lưu trữ trực tiếp bởi BCT Studio.",
+    "access_web": "TRUY CẬP ỨNG DỤNG",
+    "download_exe": "TẢI BẢN .EXE",
+    "view_github": "MÃ NGUỒN GITHUB",
+    "gallery_title": "BỘ SƯU TẬP ẢNH THỰC TẾ",
+    "close_hint": "(Bấm vào bất kỳ đâu để đóng)",
+    "connecting": "ĐANG KẾT NỐI..."
   }
 }

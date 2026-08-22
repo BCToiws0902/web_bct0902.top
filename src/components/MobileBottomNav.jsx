@@ -17,7 +17,7 @@ const MobileBottomNav = () => {
   const navItems = [
     { to: '/',           icon: <Home size={20} />,          label: t('nav.home').toUpperCase(),  isLink: true },
     { to: '/chronicles', icon: <ClipboardList size={20} />,  label: t('nav.chronicles').toUpperCase(), isLink: true },
-    { to: '/showcase',   icon: <Layout size={20} />,         label: t('nav.utilities').toUpperCase(),  isLink: true },
+    { to: '/showcase',   icon: <Layout size={20} />,         label: t('nav.showcase').toUpperCase(),  isLink: true },
     { to: '/blog',       icon: <Users size={20} />,          label: t('nav.blog').toUpperCase(),   isLink: true },
     { to: '/shortener',  icon: <Link2 size={20} />,          label: t('nav.shortener').toUpperCase(),    isLink: true },
     { to: '/quiz-maker', icon: <HelpCircle size={20} />,     label: 'QUIZ',       isLink: true },

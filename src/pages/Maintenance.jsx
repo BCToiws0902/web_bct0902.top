@@ -2,9 +2,11 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ShieldAlert, Home, ArrowLeft, Construction, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const Maintenance = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="maintenance-container" style={{
@@ -18,7 +20,6 @@ const Maintenance = () => {
       overflow: 'hidden',
       padding: '2rem'
     }}>
-      {}
       <div style={{
         position: 'absolute',
         top: '20%',
@@ -117,7 +118,7 @@ const Maintenance = () => {
             fontSize: '1.1rem',
             lineHeight: 1.6
           }}>
-            Trang web này hiện đang được nâng cấp hoặc tạm khóa bởi <strong>Bùi Công Tới</strong>. Vui lòng quay lại sau nhé!
+            {t('common.maintenance_desc', 'This feature is currently undergoing maintenance. Please check back later.')}
           </p>
         </div>
 
@@ -134,8 +135,12 @@ const Maintenance = () => {
         }}>
           <Construction size={24} color="var(--accent-gold)" />
           <div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>LÝ DO: BẢO TRÌ ĐỊNH KỲ</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Hệ thống sẽ sớm hoạt động trở lại.</div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+              {t('common.under_maintenance', 'Under Maintenance')}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {t('common.maintenance_desc', 'System will be restored shortly.')}
+            </div>
           </div>
         </div>
 
@@ -145,19 +150,18 @@ const Maintenance = () => {
             onClick={() => navigate(-1)}
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
-            <ArrowLeft size={18} /> QUAY LẠI
+            <ArrowLeft size={18} /> {t('common.back', 'BACK')}
           </button>
           <button 
             className="btn-primary"
             onClick={() => navigate('/')}
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
-            <Home size={18} /> TRANG CHỦ
+            <Home size={18} /> {t('nav.home', 'HOME')}
           </button>
         </div>
       </motion.div>
 
-      {}
       <div style={{ 
         position: 'absolute', 
         bottom: '2rem', 
