@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { db } from '../firebase';
@@ -6,7 +6,6 @@ import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { 
-  Download, 
   ArrowLeft, 
   Calendar, 
   Tag, 
@@ -14,7 +13,10 @@ import {
   Cpu, 
   ExternalLink,
   GitBranch,
-  ChevronRight
+  Eye,
+  Download,
+  Laptop,
+  HardDrive
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import MobileBottomNav from '../components/MobileBottomNav';
@@ -25,7 +27,8 @@ const ProjectDetail = () => {
   const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [downloading, setDownloading] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [activeImageIdx, setActiveImageIdx] = useState(null);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -33,7 +36,13 @@ const ProjectDetail = () => {
         const docRef = doc(db, 'projects', id);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setProject({ id: docSnap.id, ...docSnap.data() });
+          const data = { id: docSnap.id, ...docSnap.data() };
+          setProject(data);
+          
+          // Increment views count in background
+          updateDoc(docRef, {
+            views: increment(1)
+          }).catch(console.error);
         } else {
           navigate('/showcase');
         }
@@ -47,28 +56,23 @@ const ProjectDetail = () => {
     fetchProject();
   }, [id, navigate]);
 
-  const handleDownload = async () => {
+  const handleMainAction = async () => {
     const targetUrl = project?.demoUrl || project?.downloadUrl || project?.githubUrl;
-    if (!targetUrl || downloading) return;
+    if (!targetUrl || connecting) return;
     
-    setDownloading(true);
+    setConnecting(true);
     try {
-      const docRef = doc(db, 'projects', project.id);
-      await updateDoc(docRef, {
-        downloadCount: increment(1)
-      }).catch(console.error);
-
-      window.open(targetUrl, '_blank', 'noopener,noreferrer');
-      setProject(prev => ({ ...prev, downloadCount: (prev?.downloadCount || 0) + 1 }));
-    } catch {
       window.open(targetUrl, '_blank', 'noopener,noreferrer');
     } finally {
-      setTimeout(() => setDownloading(false), 1000);
+      setTimeout(() => setConnecting(false), 1000);
     }
   };
 
   if (loading) return <LoadingScreen />;
   if (!project) return null;
+
+  const galleryList = Array.isArray(project.galleryImages) ? project.galleryImages : [];
+  const actionText = project.actionButtonLabel || (project.demoUrl ? 'TRUY CẬP ỨNG DỤNG' : project.downloadUrl ? 'TẢI BẢN .EXE' : 'XEM MÃ NGUỒN GITHUB');
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingBottom: '100px' }}>
@@ -88,13 +92,14 @@ const ProjectDetail = () => {
           <ArrowLeft size={16} /> QUAY LẠI PHÒNG TRƯNG BÀY
         </motion.button>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '3rem' }} className="project-detail-grid">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '3rem' }} className="project-detail-grid">
           {/* Main Content */}
           <motion.main
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
+            {/* Hero Cover */}
             <div style={{ 
               width: '100%', aspectRatio: '16/9', borderRadius: '24px', 
               overflow: 'hidden', marginBottom: '2.5rem',
@@ -102,7 +107,7 @@ const ProjectDetail = () => {
               boxShadow: '0 20px 50px rgba(0,0,0,0.3)'
             }}>
               <img 
-                src={project.thumbnail || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=1200'} 
+                src={project.thumbnail || project.coverImage || project.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=1200'} 
                 alt={project.title} 
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
@@ -112,23 +117,61 @@ const ProjectDetail = () => {
               {project.title}
             </h1>
 
-            <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '2.5rem', opacity: 0.6, fontSize: '0.9rem' }}>
+            {/* Meta Tags Bar */}
+            <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '2.5rem', opacity: 0.7, fontSize: '0.9rem', flexWrap: 'wrap' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Calendar size={14} /> {project.createdAt?.toDate ? project.createdAt.toDate().toLocaleDateString('vi-VN') : new Date(project.createdAt).toLocaleDateString('vi-VN')}
+                <Calendar size={14} /> {project.createdAt?.toDate ? project.createdAt.toDate().toLocaleDateString('vi-VN') : new Date(project.createdAt || Date.now()).toLocaleDateString('vi-VN')}
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Tag size={14} /> Version {project.version || '1.0.0'}
+                <Tag size={14} /> Phiên bản {project.version || 'v1.0.0'}
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#10b981' }}>
-                <Download size={14} /> {project.downloadCount || 0} lượt truy cập
+              {project.platform && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Laptop size={14} /> {project.platform}
+                </span>
+              )}
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#10b981', fontWeight: 600 }}>
+                <Eye size={14} /> {project.views || project.downloadCount || 1} lượt xem
               </span>
             </div>
 
+            {/* Gallery Section */}
+            {galleryList.length > 0 && (
+              <div style={{ marginBottom: '3rem' }}>
+                <h3 style={{ fontSize: '1.4rem', fontFamily: 'Chakra Petch', marginBottom: '1.2rem', color: '#fff' }}>
+                  📸 BỘ SƯU TẬP ẢNH THỰC TẾ ({galleryList.length})
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                  {galleryList.map((item, idx) => (
+                    <div 
+                      key={idx} 
+                      onClick={() => setActiveImageIdx(idx)}
+                      style={{ 
+                        borderRadius: '12px', overflow: 'hidden', cursor: 'pointer',
+                        border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)',
+                        transition: 'transform 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                      <img src={item.url} alt={item.caption || `Ảnh ${idx + 1}`} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
+                      {item.caption && (
+                        <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                          {item.caption}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Markdown Body */}
             <div className="markdown-body" style={{ 
               color: 'var(--text-secondary)', lineHeight: '1.8', fontSize: '1.1rem'
             }}>
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {project.longDescription || project.description}
+                {project.content || project.fullDescription || project.longDescription || project.description || ''}
               </ReactMarkdown>
             </div>
           </motion.main>
@@ -144,8 +187,8 @@ const ProjectDetail = () => {
                 <Cpu size={18} /> CÔNG NGHỆ SỬ DỤNG
               </h3>
               
-              <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '2.5rem' }}>
-                {(project.tags || project.techStack || []).map((tech, i) => (
+              <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
+                {(Array.isArray(project.tags) ? project.tags : (project.tech || [])).map((tech, i) => (
                   <span key={i} style={{ 
                     padding: '6px 12px', background: 'rgba(255,255,255,0.05)', 
                     borderRadius: '6px', fontSize: '0.8rem', border: '1px solid rgba(255,255,255,0.1)'
@@ -155,47 +198,71 @@ const ProjectDetail = () => {
                 ))}
               </div>
 
-              <div style={{ background: 'rgba(16, 185, 129, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#10b981', marginBottom: '0.5rem', fontWeight: 700 }}>
-                  <ShieldCheck size={18} /> AN TOÀN & BẢO MẬT
+              {/* Specs Box */}
+              <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Chuyên mục:</span>
+                  <span style={{ color: '#fff', fontWeight: 600 }}>{project.category || 'Công cụ'}</span>
+                </div>
+                {project.platform && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Nền tảng:</span>
+                    <span style={{ color: '#fff', fontWeight: 600 }}>{project.platform}</span>
+                  </div>
+                )}
+                {project.fileSize && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Dung lượng:</span>
+                    <span style={{ color: '#fff', fontWeight: 600 }}>{project.fileSize}</span>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ background: 'rgba(16, 185, 129, 0.05)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#10b981', marginBottom: '0.35rem', fontWeight: 700, fontSize: '0.9rem' }}>
+                  <ShieldCheck size={16} /> AN TOÀN & XÁC THỰC
                 </div>
                 <p style={{ fontSize: '0.8rem', opacity: 0.7, margin: 0 }}>
-                  Phần mềm đã được kiểm tra và xác thực bởi hệ thống BCT Studio.
+                  Dự án đã được kiểm thử và lưu trữ trực tiếp bởi BCT Studio.
                 </p>
               </div>
 
-              <button 
-                onClick={handleDownload}
-                disabled={downloading}
-                style={{ 
-                  width: '100%', padding: '1.2rem', borderRadius: '12px',
-                  background: downloading ? 'rgba(255,255,255,0.1)' : 'var(--accent-main)',
-                  color: downloading ? 'var(--text-muted)' : '#000',
-                  border: 'none', fontWeight: 800, fontSize: '1rem',
-                  cursor: downloading ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem',
-                  boxShadow: downloading ? 'none' : '0 10px 30px rgba(var(--accent-rgb), 0.3)',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                {downloading ? 'ĐANG KẾT NỐI...' : (
-                  <>
-                    {project.demoUrl ? <ExternalLink size={20} /> : <Download size={20} />}
-                    {project.demoUrl ? 'TRUY CẬP ỨNG DỤNG' : 'TẢI XUỐNG NGAY'}
-                  </>
-                )}
-              </button>
+              {/* Main Action Button */}
+              {(project.demoUrl || project.downloadUrl || project.githubUrl) && (
+                <button 
+                  onClick={handleMainAction}
+                  disabled={connecting}
+                  style={{ 
+                    width: '100%', padding: '1.1rem', borderRadius: '12px',
+                    background: connecting ? 'rgba(255,255,255,0.1)' : 'var(--accent-main)',
+                    color: connecting ? 'var(--text-muted)' : '#000',
+                    border: 'none', fontWeight: 800, fontSize: '0.95rem',
+                    cursor: connecting ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem',
+                    boxShadow: connecting ? 'none' : '0 10px 30px rgba(var(--accent-rgb), 0.3)',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  {connecting ? 'ĐANG KẾT NỐI...' : (
+                    <>
+                      {project.demoUrl ? <ExternalLink size={18} /> : project.downloadUrl ? <Download size={18} /> : <GitBranch size={18} />}
+                      {actionText}
+                    </>
+                  )}
+                </button>
+              )}
 
-              {project.githubUrl && (
+              {/* Secondary Action: GitHub */}
+              {project.githubUrl && project.demoUrl && (
                 <a
                   href={project.githubUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
-                    width: '100%', padding: '0.9rem', borderRadius: '12px',
+                    width: '100%', padding: '0.85rem', borderRadius: '12px',
                     background: 'rgba(255,255,255,0.05)',
                     color: 'var(--text-primary)',
-                    border: '1px solid rgba(255,255,255,0.1)', fontWeight: 600, fontSize: '0.9rem',
+                    border: '1px solid rgba(255,255,255,0.1)', fontWeight: 600, fontSize: '0.88rem',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
                     textDecoration: 'none', marginTop: '0.75rem',
                     transition: 'all 0.2s ease'
@@ -204,22 +271,47 @@ const ProjectDetail = () => {
                   <GitBranch size={16} /> MÃ NGUỒN GITHUB
                 </a>
               )}
-              
-              <p style={{ textAlign: 'center', fontSize: '0.75rem', opacity: 0.6, marginTop: '1rem' }}>
-                {project.demoUrl ? '🌐 Ứng dụng Web chạy trực tiếp trên trình duyệt' : `Dung lượng ước tính: ~${Math.floor(Math.random() * 50) + 10}MB`}
-              </p>
             </div>
           </motion.aside>
         </div>
       </div>
 
+      {/* LIGHTBOX PREVIEW */}
+      {activeImageIdx !== null && galleryList[activeImageIdx] && (
+        <div 
+          onClick={() => setActiveImageIdx(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)',
+            zIndex: 1000, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', padding: '2rem'
+          }}
+        >
+          <img 
+            src={galleryList[activeImageIdx].url} 
+            alt={galleryList[activeImageIdx].caption} 
+            style={{ maxWidth: '90vw', maxHeight: '80vh', borderRadius: '12px', objectFit: 'contain' }} 
+          />
+          {galleryList[activeImageIdx].caption && (
+            <div style={{ marginTop: '1rem', color: '#fff', fontSize: '1rem', fontWeight: 600 }}>
+              {galleryList[activeImageIdx].caption}
+            </div>
+          )}
+          <span style={{ marginTop: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+            (Bấm vào bất kỳ đâu để đóng)
+          </span>
+        </div>
+      )}
+
       <MobileBottomNav />
 
       <style>{`
         .markdown-body h2 { margin-top: 2rem; margin-bottom: 1rem; color: #fff; font-family: 'Chakra Petch'; }
+        .markdown-body h3 { margin-top: 1.5rem; margin-bottom: 0.8rem; color: #f1f5f9; }
         .markdown-body p { margin-bottom: 1.2rem; }
         .markdown-body ul { margin-bottom: 1.5rem; padding-left: 1.5rem; }
         .markdown-body li { margin-bottom: 0.5rem; }
+        .markdown-body img { max-width: 100%; border-radius: 12px; margin: 1.5rem 0; border: 1px solid rgba(255,255,255,0.1); }
+        .markdown-body em { display: block; text-align: center; font-size: 0.85rem; color: var(--text-muted); margin-top: -0.8rem; margin-bottom: 1.5rem; }
         
         @media (max-width: 992px) {
           .project-detail-grid { grid-template-columns: 1fr; }

@@ -146,15 +146,15 @@ const Showcase = () => {
                 </div>
 
                 {}
-                <div style={{ 
+                 <div style={{ 
                   marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--accent-main)'
                 }}>
                    <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       CHI TIẾT <ChevronRight size={14} />
                    </span>
-                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: 0.6, fontSize: '0.75rem' }}>
-                      <Download size={14} /> {project.downloadCount || 0}
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: 0.7, fontSize: '0.75rem', color: '#10b981' }}>
+                      <Eye size={14} /> {project.views || project.downloadCount || 0}
                    </div>
                  </div>
               </motion.div>

@@ -1,4 +1,4 @@
-import admin from 'firebase-admin';
+﻿import admin from 'firebase-admin';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -22,7 +22,7 @@ admin.initializeApp({
 const db = admin.firestore();
 
 async function syncAll() {
-  console.log('🚀 Starting Firestore sync using Admin SDK...');
+  console.log('ðŸš€ Starting Firestore sync using Admin SDK...');
 
   // 1. Main Config
   const mainConfigData = {
@@ -42,16 +42,16 @@ async function syncAll() {
     ],
     content: {
       quotes: [
-        "Không có gì quý hơn độc lập, tự do. - Hồ Chí Minh",
-        "Vì lợi ích mười năm thì phải trồng cây, vì lợi ích trăm năm thì phải trồng người. - Hồ Chí Minh",
-        "Đoàn kết, đoàn kết, đại đoàn kết. Thành công, thành công, đại thành công. - Hồ Chí Minh",
-        "Dễ mười lần không dân cũng chịu, khó trăm lần dân liệu cũng xong. - Hồ Chí Minh",
-        "Có tài mà không có đức là người vô dụng, có đức mà không có tài thì làm việc gì cũng khó. - Hồ Chí Minh",
-        "Học hỏi là việc phải tiếp tục suốt đời. - Hồ Chí Minh",
-        "Cần, Kiệm, Liêm, Chính, Chí công vô tư. - Hồ Chí Minh",
-        "Nước Việt Nam là một, dân tộc Việt Nam là một. - Hồ Chí Minh",
-        "Mỗi người tốt, mỗi việc tốt là một bông hoa đẹp, cả dân tộc ta là một rừng hoa đẹp. - Hồ Chí Minh",
-        "Tôi chỉ có một sự ham muốn, ham muốn tột bậc, là làm sao cho nước ta được độc lập toàn diện. - Hồ Chí Minh"
+        "KhÃ´ng cÃ³ gÃ¬ quÃ½ hÆ¡n Ä‘á»™c láº­p, tá»± do. - Há»“ ChÃ­ Minh",
+        "VÃ¬ lá»£i Ã­ch mÆ°á»i nÄƒm thÃ¬ pháº£i trá»“ng cÃ¢y, vÃ¬ lá»£i Ã­ch trÄƒm nÄƒm thÃ¬ pháº£i trá»“ng ngÆ°á»i. - Há»“ ChÃ­ Minh",
+        "ÄoÃ n káº¿t, Ä‘oÃ n káº¿t, Ä‘áº¡i Ä‘oÃ n káº¿t. ThÃ nh cÃ´ng, thÃ nh cÃ´ng, Ä‘áº¡i thÃ nh cÃ´ng. - Há»“ ChÃ­ Minh",
+        "Dá»… mÆ°á»i láº§n khÃ´ng dÃ¢n cÅ©ng chá»‹u, khÃ³ trÄƒm láº§n dÃ¢n liá»‡u cÅ©ng xong. - Há»“ ChÃ­ Minh",
+        "CÃ³ tÃ i mÃ  khÃ´ng cÃ³ Ä‘á»©c lÃ  ngÆ°á»i vÃ´ dá»¥ng, cÃ³ Ä‘á»©c mÃ  khÃ´ng cÃ³ tÃ i thÃ¬ lÃ m viá»‡c gÃ¬ cÅ©ng khÃ³. - Há»“ ChÃ­ Minh",
+        "Há»c há»i lÃ  viá»‡c pháº£i tiáº¿p tá»¥c suá»‘t Ä‘á»i. - Há»“ ChÃ­ Minh",
+        "Cáº§n, Kiá»‡m, LiÃªm, ChÃ­nh, ChÃ­ cÃ´ng vÃ´ tÆ°. - Há»“ ChÃ­ Minh",
+        "NÆ°á»›c Viá»‡t Nam lÃ  má»™t, dÃ¢n tá»™c Viá»‡t Nam lÃ  má»™t. - Há»“ ChÃ­ Minh",
+        "Má»—i ngÆ°á»i tá»‘t, má»—i viá»‡c tá»‘t lÃ  má»™t bÃ´ng hoa Ä‘áº¹p, cáº£ dÃ¢n tá»™c ta lÃ  má»™t rá»«ng hoa Ä‘áº¹p. - Há»“ ChÃ­ Minh",
+        "TÃ´i chá»‰ cÃ³ má»™t sá»± ham muá»‘n, ham muá»‘n tá»™t báº­c, lÃ  lÃ m sao cho nÆ°á»›c ta Ä‘Æ°á»£c Ä‘á»™c láº­p toÃ n diá»‡n. - Há»“ ChÃ­ Minh"
       ],
       filmStripSpeed: 45
     },
@@ -82,11 +82,11 @@ async function syncAll() {
   };
 
   await db.collection('site_config').doc('main_config').set(mainConfigData, { merge: true });
-  console.log('✅ Synchronized site_config/main_config (15 apps, 10 quotes, 5 socials)');
+  console.log('âœ… Synchronized site_config/main_config (15 apps, 10 quotes, 5 socials)');
 
   // 2. Clean filmstrip images
   await db.collection('system').doc('memories').set({ filmStripImages: [] }, { merge: true });
-  console.log('✅ Synchronized system/memories (cleaned film images)');
+  console.log('âœ… Synchronized system/memories (cleaned film images)');
 
   // 3. Project E-Ink
   const projectData = {
@@ -94,7 +94,7 @@ async function syncAll() {
     title: 'AESL0213 E-Ink BLE',
     category: 'IoT / Web Bluetooth',
     tags: ['Web BLE', 'E-Ink 122x250', 'nRF52811', 'Floyd-Steinberg'],
-    description: 'Ứng dụng web điều khiển và nạp ảnh 3 màu (Đen, Trắng, Đỏ) lên màn hình mực điện tử AESL0213 qua giao thức Bluetooth Low Energy (Web BLE).',
+    description: 'á»¨ng dá»¥ng web Ä‘iá»u khiá»ƒn vÃ  náº¡p áº£nh 3 mÃ u (Äen, Tráº¯ng, Äá») lÃªn mÃ n hÃ¬nh má»±c Ä‘iá»‡n tá»­ AESL0213 qua giao thá»©c Bluetooth Low Energy (Web BLE).',
     demoUrl: 'https://bctoiws0902.github.io/sent_pic_to_eink/',
     githubUrl: 'https://github.com/BCToiws0902/sent_pic_to_eink',
     thumbnail: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=600',
@@ -103,7 +103,7 @@ async function syncAll() {
   };
 
   await db.collection('projects').doc('aesl0213-eink-ble').set(projectData, { merge: true });
-  console.log('✅ Synchronized project AESL0213 E-Ink BLE with demo & github URLs');
+  console.log('âœ… Synchronized project AESL0213 E-Ink BLE with demo & github URLs');
 
   // 4. Project BCTweaksRepo
   const project2Data = {
@@ -111,7 +111,7 @@ async function syncAll() {
     title: 'BCTweaksRepo',
     category: 'iOS Jailbreak / APT Repository',
     tags: ['iOS Jailbreak', 'Cydia / Sileo', 'APT Repo', 'Debian Packages', 'iOS 12+'],
-    description: 'Kho lưu trữ (Repository) tinh chỉnh và Tweak iOS dành cho các thiết bị Jailbreak (iOS 12+), tích hợp sẵn các gói .deb tối ưu hóa hệ thống, giao diện và chức năng cho Cydia, Sileo, Zebra.',
+    description: 'Kho lÆ°u trá»¯ (Repository) tinh chá»‰nh vÃ  Tweak iOS dÃ nh cho cÃ¡c thiáº¿t bá»‹ Jailbreak (iOS 12+), tÃ­ch há»£p sáºµn cÃ¡c gÃ³i .deb tá»‘i Æ°u hÃ³a há»‡ thá»‘ng, giao diá»‡n vÃ  chá»©c nÄƒng cho Cydia, Sileo, Zebra.',
     demoUrl: 'https://bctoiws0902.github.io/tweak_for_ios12/',
     githubUrl: 'https://github.com/BCToiws0902/tweak_for_ios12',
     thumbnail: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=800',
@@ -120,7 +120,7 @@ async function syncAll() {
   };
 
   await db.collection('projects').doc('bctweaks-repo').set(project2Data, { merge: true });
-  console.log('✅ Synchronized project BCTweaksRepo with repo & github URLs');
+  console.log('âœ… Synchronized project BCTweaksRepo with repo & github URLs');
 
   // 5. Project PTZ Controller Portable
   const project3Data = {
@@ -128,7 +128,7 @@ async function syncAll() {
     title: 'PTZ Controller Portable',
     category: 'Camera Tool / Hardware Utility',
     tags: ['PTZ Camera', 'VISCA Serial', '.NET WinForms', 'Always-On-Top', 'Portable App'],
-    description: 'Ứng dụng Windows portable điều khiển camera PTZ qua giao thức VISCA Serial (USB COM port), hỗ trợ bàn phím điều hướng 8 hướng, thu phóng quang học và cửa sổ điều khiển nổi mini Always-On-Top tiện lợi.',
+    description: 'á»¨ng dá»¥ng Windows portable Ä‘iá»u khiá»ƒn camera PTZ qua giao thá»©c VISCA Serial (USB COM port), há»— trá»£ bÃ n phÃ­m Ä‘iá»u hÆ°á»›ng 8 hÆ°á»›ng, thu phÃ³ng quang há»c vÃ  cá»­a sá»• Ä‘iá»u khiá»ƒn ná»•i mini Always-On-Top tiá»‡n lá»£i.',
     demoUrl: 'https://github.com/BCToiws0902/PTZ-Controller-Portable',
     githubUrl: 'https://github.com/BCToiws0902/PTZ-Controller-Portable',
     thumbnail: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=800',
@@ -137,12 +137,12 @@ async function syncAll() {
   };
 
   await db.collection('projects').doc('ptz-controller-portable').set(project3Data, { merge: true });
-  console.log('✅ Synchronized project PTZ Controller Portable with repo & github URLs');
+  console.log('âœ… Synchronized project PTZ Controller Portable with repo & github URLs');
 
-  console.log('🎉 All Firestore data successfully synchronized!');
+  console.log('ðŸŽ‰ All Firestore data successfully synchronized!');
 }
 
 syncAll().then(() => process.exit(0)).catch(err => {
-  console.error('❌ Sync failed:', err);
+  console.error('âŒ Sync failed:', err);
   process.exit(1);
 });

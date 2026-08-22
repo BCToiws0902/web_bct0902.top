@@ -18,6 +18,7 @@ import { AnimatePresence } from 'framer-motion';
 import ScrollToTop from './components/ScrollToTop';
 const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
 const BlogCMS = React.lazy(() => import('./pages/admin/BlogCMS'));
+const ProjectCMS = React.lazy(() => import('./pages/admin/ProjectCMS'));
 const Blog = React.lazy(() => import('./pages/blog/Blog')); 
 const BlogPost = React.lazy(() => import('./pages/blog/BlogPost'));
 const Chronicles = React.lazy(() => import('./pages/Chronicles'));
@@ -122,6 +123,8 @@ function AppRoutes() {
 
             <Route path="/admin" element={isAdmin ? <AdminDashboard /> : <Login />} />
             <Route path="/admin/cms/:id" element={isAdmin ? <BlogCMS /> : <Login />} />
+            <Route path="/admin/projects/:id" element={isAdmin ? <ProjectCMS /> : <Login />} />
+            <Route path="/admin/projects/edit/:id" element={isAdmin ? <ProjectCMS /> : <Login />} />
             <Route path="/shortener" element={
               <PageGuard pageId="shortener">
                 <LinkShortener />

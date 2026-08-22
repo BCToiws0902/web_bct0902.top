@@ -1218,30 +1218,43 @@ const AdminDashboard = () => {
                     <div className="config-section-title" style={{ margin: 0 }}>
                       <Package size={18} /> QUẢN LÝ DỰ ÁN & PHẦN MỀM ({projectsList.length})
                     </div>
-                    <button className="add-btn" onClick={() => setProjectModal({ isOpen: true, mode: 'add', data: {} })}>
-                      <Plus size={15} /> Thêm Dự Án Mới
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <Link to="/admin/projects/new" className="add-btn" style={{ textDecoration: 'none' }}>
+                        <Plus size={15} /> Soạn Dự Án Mới
+                      </Link>
+                      <button className="btn-ghost" onClick={fetchProjects}>
+                        <Activity size={15} /> Làm Mới
+                      </button>
+                    </div>
                   </div>
 
                   <div className="users-table-container">
                     <table className="users-table">
                       <thead>
                         <tr>
+                          <th style={{ width: '70px', textAlign: 'center' }}>STT</th>
                           <th>DỰ ÁN</th>
                           <th>CÔNG NGHỆ</th>
-                          <th>THỨ TỰ</th>
                           <th style={{ textAlign: 'right' }}>THAO TÁC</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {projectsList.map(proj => (
+                        {projectsList.map((proj, idx) => (
                           <tr key={proj.id}>
+                            <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--apple-blue)', fontSize: '0.95rem' }}>
+                              {proj.order !== undefined && proj.order !== null && proj.order !== '' ? proj.order : (idx + 1)}
+                            </td>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <img src={proj.image || '/placeholder.png'} style={{ width: '42px', height: '42px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--apple-border)' }} alt={proj.title} />
+                                <img
+                                  src={proj.thumbnail || proj.coverImage || proj.image || '/logobct.png'}
+                                  style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover', border: '1px solid var(--apple-border)' }}
+                                  alt={proj.title || 'Project thumbnail'}
+                                  onError={(e) => { e.target.src = '/logobct.png'; }}
+                                />
                                 <div>
-                                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{proj.title}</div>
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--apple-text-secondary)' }}>{proj.category}</div>
+                                  <div style={{ fontWeight: 600, fontSize: '0.92rem' }}>{proj.title}</div>
+                                  <div style={{ fontSize: '0.78rem', color: 'var(--apple-text-secondary)' }}>{proj.category}</div>
                                 </div>
                               </div>
                             </td>
@@ -1252,11 +1265,10 @@ const AdminDashboard = () => {
                                 ))}
                               </div>
                             </td>
-                            <td style={{ fontSize: '0.85rem', fontWeight: 600 }}>{proj.order || 0}</td>
                             <td>
                               <div className="action-btns" style={{ justifyContent: 'flex-end' }}>
-                                <button className="edit-btn" onClick={() => setProjectModal({ isOpen: true, mode: 'edit', data: proj })}><Edit size={15} /></button>
-                                <button className="delete-btn" onClick={() => deleteProjectRecord(proj.id)}><Trash2 size={15} /></button>
+                                <Link to={`/admin/projects/edit/${proj.id}`} className="edit-btn" aria-label={`Sửa ${proj.title}`}><Edit size={15} /></Link>
+                                <button className="delete-btn" onClick={() => deleteProjectRecord(proj.id)} aria-label={`Xóa ${proj.title}`}><Trash2 size={15} /></button>
                               </div>
                             </td>
                           </tr>
